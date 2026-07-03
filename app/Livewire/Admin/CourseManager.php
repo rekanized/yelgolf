@@ -28,14 +28,14 @@ class CourseManager extends Component
         } catch (Throwable $exception) {
             report($exception);
 
-            $this->addError('udiscUrl', 'The course could not be imported right now.');
-            $this->dispatch('notify', message: 'The course could not be imported right now.', type: 'error');
+            $this->addError('udiscUrl', __('ui.admin.import_failed'));
+            $this->dispatch('notify', message: __('ui.admin.import_failed'), type: 'error');
 
             return;
         }
 
         $this->reset('udiscUrl');
-        $this->dispatch('notify', message: sprintf('%s imported successfully.', $course->name), type: 'success');
+        $this->dispatch('notify', message: __('ui.admin.imported_successfully', ['name' => $course->name]), type: 'success');
     }
 
     public function updateCourse(int $courseId, UDiscCourseImporter $importer): void
@@ -47,18 +47,18 @@ class CourseManager extends Component
         } catch (Throwable $exception) {
             report($exception);
 
-            $this->dispatch('notify', message: sprintf('%s could not be updated right now.', $course->name), type: 'error');
+            $this->dispatch('notify', message: __('ui.admin.update_failed', ['name' => $course->name]), type: 'error');
 
             return;
         }
 
-        $this->dispatch('notify', message: sprintf('%s updated successfully.', $updatedCourse->name), type: 'success');
+        $this->dispatch('notify', message: __('ui.admin.updated_successfully', ['name' => $updatedCourse->name]), type: 'success');
     }
 
     public function render()
     {
         return view('livewire.admin.course-manager', [
             'courses' => Course::query()->with('holes')->orderBy('name')->get(),
-        ])->layout('layouts.app', ['title' => 'Admin']);
+        ])->layout('layouts.app', ['title' => __('ui.admin.page_title')]);
     }
 }

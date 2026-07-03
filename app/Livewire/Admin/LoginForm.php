@@ -21,7 +21,7 @@ class LoginForm extends Component
             $validated['username'] !== config('admin.username')
             || $validated['password'] !== config('admin.password')
         ) {
-            $this->addError('username', 'Invalid admin credentials.');
+            $this->addError('username', __('ui.admin.invalid_credentials'));
 
             return null;
         }
@@ -29,12 +29,12 @@ class LoginForm extends Component
         session()->put('admin_authenticated', true);
         session()->regenerate();
 
-        return redirect()->route('admin.dashboard');
+        return redirect()->to(url('/').'#course-list');
     }
 
     public function render()
     {
         return view('livewire.admin.login-form')
-            ->layout('layouts.app', ['title' => 'Admin login']);
+            ->layout('layouts.app', ['title' => __('ui.admin.login_page_title')]);
     }
 }

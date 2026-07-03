@@ -31,7 +31,7 @@ class CourseSearchTest extends TestCase
         $response->assertOk();
         $response->assertSee('Hästhagen');
         $response->assertDontSee('Tallbackens DGB');
-        $response->assertSee('Showing 1 course for "Hästhagen"', false);
+        $response->assertSeeText('Showing 1 course for "Hästhagen"');
     }
 
     public function test_homepage_shows_empty_search_state_when_no_courses_match(): void

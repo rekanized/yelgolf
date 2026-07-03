@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\ApplyUserPreferences;
 use App\Http\Middleware\EnsureAdminAuthenticated;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -13,6 +14,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->web(append: [
+            ApplyUserPreferences::class,
+        ]);
+
         $middleware->alias([
             'admin.auth' => EnsureAdminAuthenticated::class,
         ]);

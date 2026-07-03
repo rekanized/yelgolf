@@ -64,4 +64,9 @@ class Course extends Model
             ->orderBy('layout_order')
             ->orderBy('sort_order');
     }
+
+    public function playSessions(): HasMany
+    {
+        return $this->hasMany(PlaySession::class);
+    }
 }

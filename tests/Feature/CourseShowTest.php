@@ -21,6 +21,7 @@ class CourseShowTest extends TestCase
             'holes_count' => 18,
             'rating' => 3.8,
             'ratings_count' => 2789,
+            'difficulty_levels' => ['challenging'],
         ]);
 
         $response = $this->get('/');
@@ -29,6 +30,9 @@ class CourseShowTest extends TestCase
         $response->assertSee(route('courses.show', $course), false);
         $response->assertSee('Hästhagen');
         $response->assertSee('2,789');
+        $response->assertSee('Difficulty');
+        $response->assertSee('Challenging');
+        $response->assertSee('material-symbols-outlined', false);
         $response->assertDontSee('Long description that should not appear on the index.');
     }
 
@@ -43,6 +47,8 @@ class CourseShowTest extends TestCase
             'holes_count' => 18,
             'rating' => 3.8,
             'ratings_count' => 2789,
+            'latitude' => 59.2677595105919,
+            'longitude' => 15.161870509788173,
             'target_type' => 'DISCatcher Pro (original)',
             'tee_types' => ['Konstgräs'],
             'land_types' => ['publicPark'],
@@ -65,6 +71,7 @@ class CourseShowTest extends TestCase
             'course_id' => $course->id,
             'layout_id' => 37576,
             'layout_name' => 'Hästhagen Främre',
+            'layout_caddie_book_url' => 'https://udisc.com/courses/haesthagen-M8Wu/layouts/37576/caddie-book',
             'layout_difficulty' => 'intermediate',
             'layout_order' => 1,
             'sort_order' => 1,
@@ -79,6 +86,7 @@ class CourseShowTest extends TestCase
             'course_id' => $course->id,
             'layout_id' => 37576,
             'layout_name' => 'Hästhagen Främre',
+            'layout_caddie_book_url' => 'https://udisc.com/courses/haesthagen-M8Wu/layouts/37576/caddie-book',
             'layout_difficulty' => 'intermediate',
             'layout_order' => 1,
             'sort_order' => 2,
@@ -97,9 +105,14 @@ class CourseShowTest extends TestCase
         $response->assertSee('Konstgräs');
         $response->assertSee('Public Park');
         $response->assertSee('Mixed Use');
+        $response->assertSee('material-symbols-outlined', false);
+        $response->assertSee('course-difficulty-token--challenging', false);
+        $response->assertSee('Location');
         $response->assertSee('Restroom available');
         $response->assertSee('Dogs allowed');
         $response->assertSee('Hästhagen Främre');
+        $response->assertSee('Layout map');
+        $response->assertSee('https://udisc.com/courses/haesthagen-M8Wu/layouts/37576/caddie-book', false);
         $response->assertSee('58 m');
         $response->assertSee('92 m');
         $response->assertSee('https://udisc-parse.s3.amazonaws.com/photo-1.jpg', false);

@@ -276,7 +276,7 @@ class UDiscCourseImporter
 
             return [
                 'course' => $this->buildStructuredCourseAttributes($courseData, $courseDetailData, $html, $url),
-                'holes' => $this->buildStructuredHoleAttributes($courseIndexData['layouts'] ?? []),
+                'holes' => $this->buildStructuredHoleAttributes($courseIndexData['layouts'] ?? [], $this->normalizeUrl($url)),
                 'sync_holes' => true,
             ];
         }
@@ -395,7 +395,7 @@ class UDiscCourseImporter
         ];
     }
 
-    private function buildStructuredHoleAttributes(mixed $layouts): array
+    private function buildStructuredHoleAttributes(mixed $layouts, string $courseUrl): array
     {
         if (! is_array($layouts)) {
             return [];
@@ -420,6 +420,7 @@ class UDiscCourseImporter
                     'udisc_hole_id' => $hole['holeId'] ?? null,
                     'layout_id' => isset($layout['layoutId']) ? (int) $layout['layoutId'] : null,
                     'layout_name' => $layout['layoutName'] ?? $layout['name'] ?? null,
+                    'layout_caddie_book_url' => $this->extractLayoutCaddieBookUrl($layout, $courseUrl),
                     'layout_difficulty' => $layout['difficultyBin'] ?? null,
                     'layout_order' => $layoutIndex + 1,
                     'sort_order' => $holeIndex + 1,
@@ -433,6 +434,33 @@ class UDiscCourseImporter
         }
 
         return $holes;
+    }
+
+    private function extractLayoutCaddieBookUrl(array $layout, string $courseUrl): ?string
+    {
+        foreach (['caddieBookUrl', 'caddieBookUri', 'caddieBookPath'] as $key) {
+            $value = $layout[$key] ?? null;
+
+            if (! is_string($value) || trim($value) === '') {
+                continue;
+            }
+
+            $trimmed = trim($value);
+
+            if (Str::startsWith($trimmed, 'https://udisc.com/')) {
+                return $trimmed;
+            }
+
+            if (Str::startsWith($trimmed, '/')) {
+                return 'https://udisc.com'.$trimmed;
+            }
+        }
+
+        if (! isset($layout['layoutId']) || ! is_numeric($layout['layoutId'])) {
+            return null;
+        }
+
+        return sprintf('%s/layouts/%d/caddie-book', $courseUrl, (int) $layout['layoutId']);
     }
 
     private function extractHoleDistance(array $hole, string $unit): ?float

@@ -57,6 +57,7 @@ class CourseImportTest extends TestCase
             'course_id' => $course->id,
             'layout_id' => 37576,
             'layout_name' => 'Hästhagen Främre',
+            'layout_caddie_book_url' => 'https://udisc.com/courses/haesthagen-M8Wu/layouts/37576/caddie-book',
             'layout_difficulty' => 'intermediate',
             'number' => 1,
             'hole_label' => '1',

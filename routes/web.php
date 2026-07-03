@@ -1,14 +1,29 @@
 <?php
 
+use App\Livewire\PlaySessionPage;
+use App\Livewire\UserLoginForm;
 use App\Livewire\Admin\CourseManager;
 use App\Livewire\Admin\LoginForm;
 use App\Models\Course;
+use App\Models\PlaySession;
+use App\Services\CurrentPlayerResolver;
+use App\Services\PlaySessionStarter;
 use App\Services\UDiscCourseImporter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 
-Route::get('/', function (Request $request) {
+Route::get('/', function (Request $request, CurrentPlayerResolver $resolver) {
     $searchQuery = trim((string) $request->query('q', ''));
+    $currentPlayer = $resolver->resolve($request);
+    $hostedSessionIds = $request->hasSession()
+        ? collect($request->session()->get('hosted_play_session_ids', []))
+            ->map(static fn ($id): int => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all()
+        : [];
 
     return view('welcome', [
         'courses' => Course::query()
@@ -22,9 +37,56 @@ Route::get('/', function (Request $request) {
             })
             ->orderBy('name')
             ->get(),
+        'activeSessions' => PlaySession::query()
+            ->with([
+                'course',
+                'host',
+                'players' => fn ($query) => $query->orderBy('name'),
+            ])
+            ->where('status', 'active')
+            ->where(function ($query) use ($hostedSessionIds, $currentPlayer) {
+                if ($hostedSessionIds !== []) {
+                    $query->whereIn('id', $hostedSessionIds);
+                }
+
+                if ($currentPlayer) {
+                    $query->orWhereHas('players', function ($playerQuery) use ($currentPlayer) {
+                        $playerQuery
+                            ->where('users.id', $currentPlayer->id)
+                            ->where('play_session_user.status', 'joined');
+                    });
+                }
+            })
+            ->orderByDesc('started_at')
+            ->get(),
         'searchQuery' => $searchQuery,
     ]);
-});
+})->name('home');
+
+Route::get('/settings', function () {
+    return view('settings.edit');
+})->middleware('admin.auth')->name('settings.edit');
+
+Route::post('/preferences', function (Request $request) {
+    $availableLocales = array_keys(config('yelgolf.locales', []));
+    $availableThemes = array_keys(config('yelgolf.themes', []));
+
+    $validated = $request->validate([
+        'locale' => ['required', 'string', 'in:'.implode(',', $availableLocales)],
+        'theme' => ['required', 'string', 'in:'.implode(',', $availableThemes)],
+        'redirect_to' => ['nullable', 'url'],
+    ]);
+
+    $request->session()->put('locale', $validated['locale']);
+    $request->session()->put('theme', $validated['theme']);
+
+    $redirectTo = (string) ($validated['redirect_to'] ?? '');
+    $targetUrl = Str::startsWith($redirectTo, url('/')) ? $redirectTo : url('/');
+
+    return redirect()->to($targetUrl)
+        ->withCookie(cookie()->forever(config('yelgolf.locale_cookie', 'yelgolf_locale'), $validated['locale']))
+        ->withCookie(cookie()->forever(config('yelgolf.theme_cookie', 'yelgolf_theme'), $validated['theme']));
+})->middleware('admin.auth')->name('preferences.update');
 
 Route::get('/courses/{course:slug}', function (Course $course, UDiscCourseImporter $importer) {
     if (
@@ -46,7 +108,22 @@ Route::get('/courses/{course:slug}', function (Course $course, UDiscCourseImport
     ]);
 })->name('courses.show');
 
-Route::redirect('/login', '/admin/login');
+Route::post('/courses/{course:slug}/sessions', function (Course $course, PlaySessionStarter $starter, CurrentPlayerResolver $resolver) {
+    $session = $starter->start($course, request(), $resolver->resolve(request()));
+
+    return redirect()->route('sessions.show', $session);
+})->name('sessions.store');
+
+Route::get('/sessions/{playSession}', PlaySessionPage::class)->name('sessions.show');
+
+Route::get('/login', UserLoginForm::class)->name('login');
+
+Route::post('/logout', function () {
+    request()->session()->forget('current_player_id');
+    request()->session()->regenerate();
+
+    return redirect()->route('home');
+})->name('logout');
 
 Route::prefix('admin')->group(function (): void {
     Route::get('/login', LoginForm::class)->name('admin.login');

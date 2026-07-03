@@ -12,6 +12,7 @@ class Hole extends Model
         'udisc_hole_id',
         'layout_id',
         'layout_name',
+        'layout_caddie_book_url',
         'layout_difficulty',
         'layout_order',
         'sort_order',
