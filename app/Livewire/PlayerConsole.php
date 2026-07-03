@@ -9,8 +9,16 @@ use Livewire\Component;
 
 class PlayerConsole extends Component
 {
-    public function joinSession(int $sessionId, int $userId, CurrentPlayerResolver $resolver): void
+    public function joinSession(int $sessionId, CurrentPlayerResolver $resolver): void
     {
+        $currentPlayer = $resolver->resolve(request());
+
+        if (! $currentPlayer) {
+            $this->dispatch('notify', message: __('ui.session.join_failed'), type: 'error');
+
+            return;
+        }
+
         $session = PlaySession::query()
             ->with('course')
             ->whereKey($sessionId)
@@ -24,7 +32,7 @@ class PlayerConsole extends Component
         }
 
         $membership = $session->players()
-            ->where('users.id', $userId)
+            ->where('users.id', $currentPlayer->id)
             ->first();
 
         if (! $membership || $membership->pivot->status !== 'invited') {
@@ -33,13 +41,11 @@ class PlayerConsole extends Component
             return;
         }
 
-        $session->players()->updateExistingPivot($userId, [
+        $session->players()->updateExistingPivot($currentPlayer->id, [
             'status' => 'joined',
             'joined_at' => now(),
             'updated_at' => now(),
         ]);
-
-        $resolver->setCurrentPlayer($userId, request());
 
         $this->dispatch('notify', message: __('ui.session.joined_successfully', ['course' => $session->course->name]), type: 'success');
 
@@ -57,6 +63,12 @@ class PlayerConsole extends Component
 
     protected function pendingInvites(): Collection
     {
+        $currentPlayer = app(CurrentPlayerResolver::class)->resolve(request());
+
+        if (! $currentPlayer) {
+            return collect();
+        }
+
         return PlaySession::query()
             ->with([
                 'course',
@@ -64,19 +76,24 @@ class PlayerConsole extends Component
                 'players' => fn ($query) => $query->orderBy('name'),
             ])
             ->where('status', 'active')
+            ->whereHas('players', function ($query) use ($currentPlayer) {
+                $query
+                    ->where('users.id', $currentPlayer->id)
+                    ->where('play_session_user.status', 'invited');
+            })
             ->orderByDesc('started_at')
             ->get()
-            ->flatMap(function (PlaySession $session): Collection {
+            ->flatMap(function (PlaySession $session) use ($currentPlayer): Collection {
                 return $session->players
-                    ->filter(fn ($player): bool => $player->pivot->status === 'invited')
+                    ->filter(fn ($player): bool => $player->id === $currentPlayer->id && $player->pivot->status === 'invited')
                     ->map(function ($player) use ($session): array {
-                    return [
-                        'session_id' => $session->id,
-                        'course_name' => $session->course->name,
-                        'host_name' => $session->host?->name ?? $session->host_name ?? __('ui.session.host_fallback'),
-                        'invitee_id' => $player->id,
-                        'invitee_name' => $player->name,
-                    ];
+                        return [
+                            'session_id' => $session->id,
+                            'course_name' => $session->course->name,
+                            'host_name' => $session->host?->name ?? $session->host_name ?? __('ui.session.host_fallback'),
+                            'invitee_id' => $player->id,
+                            'invitee_name' => $player->name,
+                        ];
                     });
             })
             ->values();

@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'test',
                 'password' => Hash::make('test'),
+                'role' => User::ROLE_PLAYER,
             ],
         );
     }

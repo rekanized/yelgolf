@@ -23,6 +23,7 @@ class UserLoginForm extends Component
         $user = User::query()
             ->where('name', $validated['login'])
             ->orWhere('email', $validated['login'])
+            ->orderByRaw('case when role = ? then 0 else 1 end', [User::ROLE_ADMIN])
             ->first();
 
         if (! $user || ! Hash::check($validated['password'], $user->password)) {
@@ -33,8 +34,9 @@ class UserLoginForm extends Component
 
         $resolver->setCurrentPlayer($user->id, request());
         session()->regenerate();
+        session()->forget('admin_authenticated');
 
-        return redirect()->to(url('/').'#course-list');
+        return redirect()->intended(url('/').'#course-list');
     }
 
     public function render()

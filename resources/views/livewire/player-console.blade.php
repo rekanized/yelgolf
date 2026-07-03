@@ -15,7 +15,7 @@
                             <p class="muted">{{ __('ui.session.invited_by', ['name' => $invitation['host_name']]) }}</p>
                         </div>
 
-                        <button class="button button-primary" type="button" wire:click="joinSession({{ $invitation['session_id'] }}, {{ $invitation['invitee_id'] }})">
+                        <button class="button button-primary" type="button" wire:click="joinSession({{ $invitation['session_id'] }})">
                             {{ __('ui.session.join') }}
                         </button>
                     </article>

@@ -16,7 +16,7 @@ class PlaySessionTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_course_page_has_start_session_button_and_start_redirects_to_session_page(): void
+    public function test_guests_see_start_session_disabled_and_cannot_start(): void
     {
         User::factory()->create(['name' => 'Unrelated User']);
         $course = $this->createCourse();
@@ -26,9 +26,32 @@ class PlaySessionTest extends TestCase
         $response->assertOk();
         $response->assertSee('Start session');
         $response->assertDontSee('Active player');
+        $response->assertSee('type="submit" disabled', false);
+        $response->assertSee('aria-disabled="true"', false);
+        $response->assertSee('Sign in to start a session.');
         $response->assertSee(route('sessions.store', $course), false);
 
-        $redirectResponse = $this->post(route('sessions.store', $course));
+        $this->post(route('sessions.store', $course))
+            ->assertForbidden();
+
+        $this->assertDatabaseCount('play_sessions', 0);
+    }
+
+    public function test_authenticated_player_can_start_session_from_course_page(): void
+    {
+        $player = User::factory()->create(['name' => 'Guest Player']);
+        $course = $this->createCourse();
+
+        $response = $this->withSession(['current_player_id' => $player->id])
+            ->get(route('courses.show', $course));
+
+        $response->assertOk();
+        $response->assertSee('Start session');
+        $response->assertDontSee('type="submit" disabled', false);
+        $response->assertSee('aria-disabled="false"', false);
+
+        $redirectResponse = $this->withSession(['current_player_id' => $player->id])
+            ->post(route('sessions.store', $course));
 
         $session = PlaySession::query()->first();
 
@@ -36,17 +59,19 @@ class PlaySessionTest extends TestCase
         $this->assertNotNull($session);
         $this->assertDatabaseHas('play_sessions', [
             'course_id' => $course->id,
-            'host_id' => null,
+            'host_id' => $player->id,
             'status' => 'active',
         ]);
         $this->assertSame(1, $session->fresh()->load('players')->participantCount());
 
-        $this->get(route('sessions.show', $session))
+        $this->withSession(['current_player_id' => $player->id])
+            ->get(route('sessions.show', $session))
             ->assertOk()
             ->assertSee('1 player')
-            ->assertSee('Session host');
+            ->assertSee('Guest Player');
 
-        $this->get('/')
+        $this->withSession(['current_player_id' => $player->id])
+            ->get('/')
             ->assertOk()
             ->assertSee('Active sessions')
             ->assertSee(route('sessions.show', $session), false)
@@ -55,24 +80,34 @@ class PlaySessionTest extends TestCase
 
     public function test_host_can_invite_other_players_from_session_page(): void
     {
+        $host = User::factory()->create(['name' => 'Session Host']);
         $invitee = User::factory()->create(['name' => 'Guest Player']);
         $course = $this->createCourse();
 
         $session = PlaySession::query()->create([
             'course_id' => $course->id,
-            'host_id' => null,
-            'host_session_key' => $this->app['session']->getId(),
-            'host_name' => 'Session host',
+            'host_id' => $host->id,
+            'host_session_key' => null,
+            'host_name' => $host->name,
             'status' => 'active',
             'started_at' => now(),
         ]);
 
-        Livewire::test(PlaySessionPage::class, ['playSession' => $session])
+        $session->players()->attach($host->id, [
+            'status' => 'joined',
+            'invited_at' => now(),
+            'joined_at' => now(),
+        ]);
+
+        $this->withSession(['current_player_id' => $host->id]);
+
+        Livewire::withQueryParams([])
+            ->test(PlaySessionPage::class, ['playSession' => $session])
             ->call('openInvitePicker')
             ->set('selectedInviteeIds', [(string) $invitee->id])
             ->call('invitePlayers')
             ->assertSee('Players in session')
-            ->assertSee('Session host')
+            ->assertSee('Session Host')
             ->assertSee('Guest Player');
 
         $this->assertDatabaseHas('play_session_user', [
@@ -84,6 +119,7 @@ class PlaySessionTest extends TestCase
 
     public function test_session_participants_can_choose_layout_settings(): void
     {
+        $host = User::factory()->create(['name' => 'Session Host']);
         $invitee = User::factory()->create(['name' => 'Guest Player']);
         $course = $this->createCourse();
 
@@ -101,14 +137,23 @@ class PlaySessionTest extends TestCase
 
         $session = PlaySession::query()->create([
             'course_id' => $course->id,
-            'host_id' => null,
-            'host_session_key' => $this->app['session']->getId(),
-            'host_name' => 'Session host',
+            'host_id' => $host->id,
+            'host_session_key' => null,
+            'host_name' => $host->name,
             'status' => 'active',
             'started_at' => now(),
         ]);
 
-        Livewire::test(PlaySessionPage::class, ['playSession' => $session])
+        $session->players()->attach($host->id, [
+            'status' => 'joined',
+            'invited_at' => now(),
+            'joined_at' => now(),
+        ]);
+
+        $this->withSession(['current_player_id' => $host->id]);
+
+        Livewire::withQueryParams([])
+            ->test(PlaySessionPage::class, ['playSession' => $session])
             ->call('updateParticipantLayout', 'host', '44317')
             ->assertSee('Hästhagen Bakre');
 
@@ -138,7 +183,7 @@ class PlaySessionTest extends TestCase
         $this->get(route('sessions.show', $session->fresh()))
             ->assertOk()
             ->assertDontSee('Save view settings')
-            ->assertSee('Session host')
+            ->assertSee('Session Host')
             ->assertSee('Guest Player')
             ->assertSee('Hästhagen Främre')
             ->assertSee('Hästhagen Bakre');
@@ -146,17 +191,24 @@ class PlaySessionTest extends TestCase
 
     public function test_multiple_invited_players_can_join_same_session_and_find_it_again_from_home(): void
     {
+        $host = User::factory()->create(['name' => 'Session Host']);
         $inviteeOne = User::factory()->create(['name' => 'Guest Player One']);
         $inviteeTwo = User::factory()->create(['name' => 'Guest Player Two']);
         $course = $this->createCourse();
 
         $session = PlaySession::query()->create([
             'course_id' => $course->id,
-            'host_id' => null,
-            'host_session_key' => 'host-browser',
-            'host_name' => 'Session host',
+            'host_id' => $host->id,
+            'host_session_key' => null,
+            'host_name' => $host->name,
             'status' => 'active',
             'started_at' => now(),
+        ]);
+
+        $session->players()->attach($host->id, [
+            'status' => 'joined',
+            'invited_at' => now(),
+            'joined_at' => now(),
         ]);
 
         $session->players()->attach($inviteeOne->id, [
@@ -172,20 +224,22 @@ class PlaySessionTest extends TestCase
         $this->get('/')
             ->assertOk()
             ->assertDontSee('Active player')
-            ->assertSee('Join session')
-            ->assertSee('Hästhagen')
-            ->assertSee('Guest Player One')
-            ->assertSee('Guest Player Two')
-            ->assertSee('Session host');
+            ->assertDontSee('Join session')
+            ->assertDontSee('Active sessions')
+            ->assertDontSee('Session Host');
 
-        Livewire::test(PlayerConsole::class)
-            ->call('joinSession', $session->id, $inviteeOne->id)
+        $this->withSession(['current_player_id' => $inviteeOne->id]);
+
+        Livewire::withQueryParams([])
+            ->test(PlayerConsole::class)
+            ->call('joinSession', $session->id)
             ->assertRedirect(route('sessions.show', $session));
 
-        $this->get(route('sessions.show', $session))
+        $this->withSession(['current_player_id' => $inviteeOne->id])
+            ->get(route('sessions.show', $session))
             ->assertOk()
             ->assertSee('3 players')
-            ->assertSee('Session host')
+            ->assertSee('Session Host')
             ->assertSee('Guest Player One');
 
         $this->withSession(['current_player_id' => $inviteeOne->id])
@@ -195,8 +249,10 @@ class PlaySessionTest extends TestCase
             ->assertSee(route('sessions.show', $session), false)
             ->assertSee('Open session');
 
+        $this->withSession(['current_player_id' => $inviteeTwo->id]);
+
         Livewire::withQueryParams([])->test(PlayerConsole::class)
-            ->call('joinSession', $session->id, $inviteeTwo->id)
+            ->call('joinSession', $session->id)
             ->assertRedirect(route('sessions.show', $session));
 
         $this->assertDatabaseHas('play_session_user', [
@@ -211,7 +267,8 @@ class PlaySessionTest extends TestCase
             'status' => 'joined',
         ]);
 
-        $this->get(route('sessions.show', $session))
+        $this->withSession(['current_player_id' => $inviteeTwo->id])
+            ->get(route('sessions.show', $session))
             ->assertOk()
             ->assertSee('3 players')
             ->assertSee('Guest Player Two');
@@ -222,6 +279,42 @@ class PlaySessionTest extends TestCase
             ->assertSee('Active sessions')
             ->assertSee(route('sessions.show', $session), false)
             ->assertSee('Open session');
+    }
+
+    public function test_invited_but_not_joined_player_cannot_view_session_or_home_listing(): void
+    {
+        $host = User::factory()->create(['name' => 'Session Host']);
+        $invitee = User::factory()->create(['name' => 'Guest Player']);
+        $course = $this->createCourse();
+
+        $session = PlaySession::query()->create([
+            'course_id' => $course->id,
+            'host_id' => $host->id,
+            'host_name' => $host->name,
+            'status' => 'active',
+            'started_at' => now(),
+        ]);
+
+        $session->players()->attach($host->id, [
+            'status' => 'joined',
+            'invited_at' => now(),
+            'joined_at' => now(),
+        ]);
+
+        $session->players()->attach($invitee->id, [
+            'status' => 'invited',
+            'invited_at' => now(),
+        ]);
+
+        $this->withSession(['current_player_id' => $invitee->id])
+            ->get(route('sessions.show', $session))
+            ->assertForbidden();
+
+        $this->withSession(['current_player_id' => $invitee->id])
+            ->get('/')
+            ->assertOk()
+            ->assertDontSee('Active sessions')
+            ->assertDontSee(route('sessions.show', $session), false);
     }
 
     protected function createCourse(): Course

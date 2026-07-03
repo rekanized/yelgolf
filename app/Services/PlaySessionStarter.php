@@ -9,38 +9,28 @@ use Illuminate\Http\Request;
 
 class PlaySessionStarter
 {
-    public function start(Course $course, Request $request, ?User $currentPlayer = null): PlaySession
+    public function start(Course $course, Request $request, User $currentPlayer): PlaySession
     {
         $session = PlaySession::query()->firstOrCreate(
             [
                 'course_id' => $course->id,
-                'host_id' => $currentPlayer?->id,
+                'host_id' => $currentPlayer->id,
                 'host_session_key' => $request->session()->getId(),
                 'status' => 'active',
             ],
             [
-                'host_name' => $currentPlayer?->name ?? __('ui.session.host_fallback'),
+                'host_name' => $currentPlayer->name,
                 'started_at' => now(),
             ],
         );
 
-        if ($currentPlayer) {
-            $session->players()->syncWithoutDetaching([
-                $currentPlayer->id => [
-                    'status' => 'joined',
-                    'invited_at' => now(),
-                    'joined_at' => now(),
-                ],
-            ]);
-        }
-
-        $hostedSessionIds = collect($request->session()->get('hosted_play_session_ids', []))
-            ->push($session->id)
-            ->unique()
-            ->values()
-            ->all();
-
-        $request->session()->put('hosted_play_session_ids', $hostedSessionIds);
+        $session->players()->syncWithoutDetaching([
+            $currentPlayer->id => [
+                'status' => 'joined',
+                'invited_at' => now(),
+                'joined_at' => now(),
+            ],
+        ]);
 
         return $session;
     }

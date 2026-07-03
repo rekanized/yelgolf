@@ -3,7 +3,6 @@
 use App\Livewire\PlaySessionPage;
 use App\Livewire\UserLoginForm;
 use App\Livewire\Admin\CourseManager;
-use App\Livewire\Admin\LoginForm;
 use App\Models\Course;
 use App\Models\PlaySession;
 use App\Services\CurrentPlayerResolver;
@@ -16,14 +15,6 @@ use Illuminate\Support\Str;
 Route::get('/', function (Request $request, CurrentPlayerResolver $resolver) {
     $searchQuery = trim((string) $request->query('q', ''));
     $currentPlayer = $resolver->resolve($request);
-    $hostedSessionIds = $request->hasSession()
-        ? collect($request->session()->get('hosted_play_session_ids', []))
-            ->map(static fn ($id): int => (int) $id)
-            ->filter()
-            ->unique()
-            ->values()
-            ->all()
-        : [];
 
     return view('welcome', [
         'courses' => Course::query()
@@ -44,19 +35,19 @@ Route::get('/', function (Request $request, CurrentPlayerResolver $resolver) {
                 'players' => fn ($query) => $query->orderBy('name'),
             ])
             ->where('status', 'active')
-            ->where(function ($query) use ($hostedSessionIds, $currentPlayer) {
-                if ($hostedSessionIds !== []) {
-                    $query->whereIn('id', $hostedSessionIds);
-                }
-
-                if ($currentPlayer) {
-                    $query->orWhereHas('players', function ($playerQuery) use ($currentPlayer) {
-                        $playerQuery
-                            ->where('users.id', $currentPlayer->id)
-                            ->where('play_session_user.status', 'joined');
-                    });
-                }
-            })
+            ->when(
+                $currentPlayer,
+                fn ($query) => $query->where(function ($sessionQuery) use ($currentPlayer) {
+                    $sessionQuery
+                        ->where('host_id', $currentPlayer->id)
+                        ->orWhereHas('players', function ($playerQuery) use ($currentPlayer) {
+                            $playerQuery
+                                ->where('users.id', $currentPlayer->id)
+                                ->where('play_session_user.status', 'joined');
+                        });
+                }),
+                fn ($query) => $query->whereRaw('0 = 1'),
+            )
             ->orderByDesc('started_at')
             ->get(),
         'searchQuery' => $searchQuery,
@@ -109,7 +100,11 @@ Route::get('/courses/{course:slug}', function (Course $course, UDiscCourseImport
 })->name('courses.show');
 
 Route::post('/courses/{course:slug}/sessions', function (Course $course, PlaySessionStarter $starter, CurrentPlayerResolver $resolver) {
-    $session = $starter->start($course, request(), $resolver->resolve(request()));
+    $currentPlayer = $resolver->resolve(request());
+
+    abort_unless($currentPlayer, 403);
+
+    $session = $starter->start($course, request(), $currentPlayer);
 
     return redirect()->route('sessions.show', $session);
 })->name('sessions.store');
@@ -120,22 +115,14 @@ Route::get('/login', UserLoginForm::class)->name('login');
 
 Route::post('/logout', function () {
     request()->session()->forget('current_player_id');
+    request()->session()->forget('admin_authenticated');
     request()->session()->regenerate();
 
     return redirect()->route('home');
 })->name('logout');
 
 Route::prefix('admin')->group(function (): void {
-    Route::get('/login', LoginForm::class)->name('admin.login');
-
     Route::get('/', CourseManager::class)
         ->middleware('admin.auth')
         ->name('admin.dashboard');
-
-    Route::post('/logout', function () {
-        request()->session()->forget('admin_authenticated');
-        request()->session()->regenerateToken();
-
-        return redirect()->route('admin.login');
-    })->name('admin.logout');
 });

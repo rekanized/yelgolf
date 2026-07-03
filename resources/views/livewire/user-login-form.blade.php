@@ -44,7 +44,6 @@
                             {{ __('ui.player_auth.signing_in') }}
                         </span>
                     </button>
-                    <a class="button button-secondary" href="{{ route('admin.login') }}">{{ __('ui.player_auth.admin_login') }}</a>
                     <a class="button button-secondary" href="{{ url('/') }}">{{ __('ui.nav.back_to_courses') }}</a>
                 </div>
             </form>

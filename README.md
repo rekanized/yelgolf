@@ -11,17 +11,23 @@ Yelgolf is a small Laravel and Livewire golf directory with a no-build frontend 
 ## Current scope
 
 - Public welcome page that lists imported courses.
-- Admin login using temporary credentials from the environment.
+- Shared user login with role-based access to admin tools.
 - Admin importer that accepts a public UDisc course URL and stores scraped course details in SQLite.
 
-## Admin login
+## Reference docs
 
-The default admin credentials are:
+- See `docs/application-functionality.md` for a verified functionality reference covering routes, roles, workflows, data model boundaries, and current operational constraints.
 
-- Username: `test`
+## Admin access
+
+The shared login page at `/login` is used for every user. Admin access is decided by the user's role after login.
+
+The bootstrap admin account uses these default credentials:
+
+- Username: `admin`
 - Password: `test`
 
-These can be changed with `ADMIN_USERNAME` and `ADMIN_PASSWORD` in the environment.
+The password can be changed with `ADMIN_PASSWORD` in the environment before running migrations.
 
 ## Local setup
 

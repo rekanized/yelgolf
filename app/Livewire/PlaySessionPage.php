@@ -22,9 +22,11 @@ class PlaySessionPage extends Component
     /** @var array<int, string> */
     public array $selectedInviteeIds = [];
 
-    public function mount(PlaySession $playSession): void
+    public function mount(PlaySession $playSession, CurrentPlayerResolver $resolver): void
     {
         $this->loadPlaySession($playSession);
+
+        abort_unless($this->isParticipant($resolver), 403);
     }
 
     public function openInvitePicker(): void
@@ -244,7 +246,10 @@ class PlaySessionPage extends Component
         $currentPlayer = $resolver->resolve(request());
 
         return $this->viewerIsHost($resolver)
-            || $this->playSession->players->contains('id', $currentPlayer?->id);
+            || $this->playSession->players->contains(function (User $player) use ($currentPlayer): bool {
+                return $player->id === $currentPlayer?->id
+                    && $player->pivot->status === 'joined';
+            });
     }
 
     protected function validatedLayoutId(string $value): ?int
@@ -285,19 +290,6 @@ class PlaySessionPage extends Component
     {
         $currentPlayer = $resolver->resolve(request());
 
-        if ($currentPlayer && $this->playSession->host_id === $currentPlayer->id) {
-            return true;
-        }
-
-        if ($this->playSession->host_session_key === null) {
-            return false;
-        }
-
-        if (request()->hasSession() && request()->session()->getId() === $this->playSession->host_session_key) {
-            return true;
-        }
-
-        return app()->bound('session')
-            && session()->getId() === $this->playSession->host_session_key;
+        return $currentPlayer && $this->playSession->host_id === $currentPlayer->id;
     }
 }

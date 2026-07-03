@@ -27,13 +27,13 @@ class AppServiceProvider extends ServiceProvider
             $themeCookieName = config('yelgolf.theme_cookie', 'yelgolf_theme');
             $defaultTheme = config('yelgolf.default_theme', 'dark');
             $request = request();
-            $isAdminAuthenticated = $request->hasSession() && (bool) $request->session()->get('admin_authenticated');
+            $currentPlayer = app(CurrentPlayerResolver::class)->resolve($request);
+            $isAdminAuthenticated = $currentPlayer?->isAdmin() ?? false;
             $requestedTheme = $isAdminAuthenticated
                 ? ($request->hasSession()
                     ? (string) $request->session()->get('theme', $request->cookie($themeCookieName, $defaultTheme))
                     : (string) $request->cookie($themeCookieName, $defaultTheme))
                 : $defaultTheme;
-            $currentPlayer = app(CurrentPlayerResolver::class)->resolve($request);
 
             $view->with('availableLocales', config('yelgolf.locales', []));
             $view->with('availableThemes', $availableThemes);

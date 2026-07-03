@@ -193,7 +193,7 @@
                             <p class="eyebrow eyebrow-light">{{ __('ui.home.empty_eyebrow') }}</p>
                             <h1>{{ __('ui.home.empty_title') }}</h1>
                             <p>{{ __('ui.home.empty_copy') }}</p>
-                            <a class="button button-primary" href="{{ route('admin.login') }}">{{ __('ui.home.open_login') }}</a>
+                            <a class="button button-primary" href="{{ route('login') }}">{{ __('ui.home.open_login') }}</a>
                         @endif
                     </section>
                 @endif

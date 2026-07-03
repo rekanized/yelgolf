@@ -13,6 +13,7 @@
     </head>
     <body>
         @php
+            $canStartSession = filled($currentPlayer ?? null);
             $translateCourseValue = static function (string $group, ?string $value): ?string {
                 if (! filled($value)) {
                     return null;
@@ -116,9 +117,13 @@
 
                             <form class="button-form" method="POST" action="{{ route('sessions.store', $course) }}">
                                 @csrf
-                                <button class="button button-secondary" type="submit">{{ __('ui.session.start') }}</button>
+                                <button class="button button-secondary" type="submit" @disabled(! $canStartSession) aria-disabled="{{ $canStartSession ? 'false' : 'true' }}">{{ __('ui.session.start') }}</button>
                             </form>
                         </div>
+
+                        @unless ($canStartSession)
+                            <p class="panel-note">{{ __('ui.session.choose_player') }}</p>
+                        @endunless
                     </div>
 
                     <dl class="course-show__stats">

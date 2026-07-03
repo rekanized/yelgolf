@@ -705,6 +705,11 @@ p {
     opacity: 0.9;
 }
 
+.button[disabled] {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 .button-with-spinner {
     min-width: 134px;
 }
