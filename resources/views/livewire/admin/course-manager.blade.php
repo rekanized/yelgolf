@@ -96,7 +96,9 @@
                         <article class="course-list-item">
                             <div class="dashboard-header">
                                 <div>
-                                    <h3>{{ $course->name }}</h3>
+                                    <h3>
+                                        <a class="text-link" href="{{ route('courses.show', $course) }}">{{ $course->name }}</a>
+                                    </h3>
                                     <p class="muted">{{ $course->location_name ?? __('ui.admin.location_unavailable') }}</p>
                                 </div>
                                 @if ($course->rating)

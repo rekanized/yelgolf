@@ -35,10 +35,6 @@
                         <p class="panel-note">{{ __('ui.settings.copy') }}</p>
                     </div>
 
-                    @if ($isAdminAuthenticated ?? false)
-                        <p class="lead">{{ __('ui.settings.admin_note') }}</p>
-                    @endif
-
                     <form class="settings-form settings-form--page" method="POST" action="{{ route('preferences.update') }}">
                         @csrf
                         <input type="hidden" name="redirect_to" value="{{ url()->previous() !== url()->current() ? url()->previous() : url('/') }}">

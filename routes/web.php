@@ -1,8 +1,9 @@
 <?php
 
-use App\Livewire\PlaySessionPage;
 use App\Livewire\UserLoginForm;
 use App\Livewire\Admin\CourseManager;
+use App\Livewire\PlaySessionGamePage;
+use App\Livewire\PlaySessionPage;
 use App\Models\Course;
 use App\Models\PlaySession;
 use App\Services\CurrentPlayerResolver;
@@ -12,9 +13,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 
-Route::get('/', function (Request $request, CurrentPlayerResolver $resolver) {
+Route::get('/', function (Request $request) {
     $searchQuery = trim((string) $request->query('q', ''));
-    $currentPlayer = $resolver->resolve($request);
 
     return view('welcome', [
         'courses' => Course::query()
@@ -27,28 +27,6 @@ Route::get('/', function (Request $request, CurrentPlayerResolver $resolver) {
                 });
             })
             ->orderBy('name')
-            ->get(),
-        'activeSessions' => PlaySession::query()
-            ->with([
-                'course',
-                'host',
-                'players' => fn ($query) => $query->orderBy('name'),
-            ])
-            ->where('status', 'active')
-            ->when(
-                $currentPlayer,
-                fn ($query) => $query->where(function ($sessionQuery) use ($currentPlayer) {
-                    $sessionQuery
-                        ->where('host_id', $currentPlayer->id)
-                        ->orWhereHas('players', function ($playerQuery) use ($currentPlayer) {
-                            $playerQuery
-                                ->where('users.id', $currentPlayer->id)
-                                ->where('play_session_user.status', 'joined');
-                        });
-                }),
-                fn ($query) => $query->whereRaw('0 = 1'),
-            )
-            ->orderByDesc('started_at')
             ->get(),
         'searchQuery' => $searchQuery,
     ]);
@@ -108,6 +86,37 @@ Route::post('/courses/{course:slug}/sessions', function (Course $course, PlaySes
 
     return redirect()->route('sessions.show', $session);
 })->name('sessions.store');
+
+Route::get('/sessions', function (Request $request, CurrentPlayerResolver $resolver) {
+    $currentPlayer = $resolver->resolve($request);
+
+    return view('sessions.index', [
+        'sessions' => PlaySession::query()
+            ->with([
+                'course',
+                'host',
+                'players' => fn ($query) => $query->orderBy('name'),
+            ])
+            ->when(
+                $currentPlayer,
+                fn ($query) => $query->where(function ($sessionQuery) use ($currentPlayer) {
+                    $sessionQuery
+                        ->where('host_id', $currentPlayer->id)
+                        ->orWhereHas('players', function ($playerQuery) use ($currentPlayer) {
+                            $playerQuery
+                                ->where('users.id', $currentPlayer->id)
+                                ->where('play_session_user.status', 'joined');
+                        });
+                }),
+                fn ($query) => $query->whereRaw('0 = 1'),
+            )
+            ->orderByRaw("case when status = 'active' then 0 else 1 end")
+            ->orderByDesc('started_at')
+            ->get(),
+    ]);
+})->name('sessions.index');
+
+Route::get('/sessions/{playSession}/game', PlaySessionGamePage::class)->name('sessions.game');
 
 Route::get('/sessions/{playSession}', PlaySessionPage::class)->name('sessions.show');
 

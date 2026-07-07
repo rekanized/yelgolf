@@ -1,5 +1,6 @@
 @php
     $coursesIsActive = request()->routeIs('home') || request()->routeIs('courses.show');
+    $sessionsIsActive = request()->routeIs('sessions.*');
     $isAdmin = $isAdminAuthenticated ?? false;
     $accountIsActive = $isAdmin
         ? request()->routeIs('admin.dashboard')
@@ -10,6 +11,10 @@
 
 <nav class="sports-nav" aria-label="Primary">
     <a class="{{ $navLinkClass($coursesIsActive) }}" href="{{ url('/').'#course-list' }}" @if($coursesIsActive) aria-current="page" @endif>{{ __('ui.nav.courses') }}</a>
+
+    @if ($currentPlayer ?? false)
+        <a class="{{ $navLinkClass($sessionsIsActive) }}" href="{{ route('sessions.index') }}" @if($sessionsIsActive) aria-current="page" @endif>{{ __('ui.nav.sessions') }}</a>
+    @endif
 
     @if ($isAdmin)
         <a class="{{ $navLinkClass($accountIsActive) }}" href="{{ route('admin.dashboard') }}" @if($accountIsActive) aria-current="page" @endif>{{ __('ui.nav.admin') }}</a>

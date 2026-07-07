@@ -72,14 +72,11 @@ Guests cannot:
 Purpose:
 
 - renders the course directory,
-- applies text search across course name, location, and description,
-- shows active sessions only when the current signed-in player is the host or a joined participant.
+- applies text search across course name, location, and description.
 
 Key behavior:
 
-- guests see no active-session list items,
-- results are ordered by course name,
-- sessions are ordered by newest `started_at` first.
+- results are ordered by course name.
 
 Source: `routes/web.php`
 
@@ -111,18 +108,51 @@ Key behavior:
 
 Source: `routes/web.php`, `app/Services/PlaySessionStarter.php`
 
+#### `GET /sessions`
+
+Purpose:
+
+- lists active and ended play sessions for the current player.
+
+Key behavior:
+
+- includes sessions the player hosted,
+- includes sessions the player joined,
+- excludes invited-only sessions until the player joins,
+- lists active sessions before ended sessions and marks active sessions with a visible status tag,
+- ended sessions remain available as historical records with their saved roster, layouts, scores, and charts.
+
+Source: `routes/web.php`, `resources/views/sessions/index.blade.php`
+
 #### `GET /sessions/{playSession}`
 
 Purpose:
 
-- renders the play session dashboard through Livewire.
+- renders the play session dashboard and historical summary through Livewire.
 
 Key behavior:
 
 - only the host or joined participants may open the page,
-- invited-but-not-joined players cannot view the session until they join.
+- invited-but-not-joined players cannot view the session until they join,
+- active sessions expose invite, Game, layout-edit, and end-session controls according to role,
+- ended sessions remain viewable with player data and charts, but read-only session controls are locked.
 
 Source: `app/Livewire/PlaySessionPage.php`
+
+#### `GET /sessions/{playSession}/game`
+
+Purpose:
+
+- renders the active play session game screen through Livewire.
+
+Key behavior:
+
+- only joined participants in an active session may open the page,
+- each screen represents one shared hole index,
+- each visible player is scored against the hole at that index from their own selected layout,
+- joined players without selected layouts are skipped until they choose one on the session page.
+
+Source: `app/Livewire/PlaySessionGamePage.php`
 
 #### `GET /login`
 
@@ -225,26 +255,57 @@ Implemented behavior:
 - the host can invite other users,
 - invited players see pending invites in the Livewire player console,
 - invited players can join active sessions from that console,
-- once joined, those players can reopen the session from the home page active-sessions list.
+- joined players can reopen active and ended sessions from the Sessions navigation page,
+- joined participants can open the Game screen from the session page,
+- the host can end an active session after confirming a warning modal,
+- ending a session marks it `ended`, stores `ended_at`, redirects back to the course page, removes it from active-session and pending-invite flows, and keeps it in the Sessions history page.
 
 Current constraints:
 
 - session creation is tied to a specific course, host user, host session key, and active status,
-- there is no implemented flow for ending or archiving a session,
-- non-participants are blocked from opening the session page.
+- only the registered host can invite additional players,
+- only the registered host can end a session,
+- non-participants are blocked from opening the session page,
+- ended session pages are read-only for participants.
 
 ### Participant layout selection
 
 Implemented behavior:
 
 - layouts are derived from the course's imported holes,
-- each participant can store one selected layout,
-- the host selection is stored directly on the play session,
-- each invited/joined player selection is stored on the pivot table.
+- each joined participant can store one selected layout for their own view,
+- registered hosts use the same pivot-table layout storage as other joined players,
+- legacy anonymous-host layout metadata is stored directly on the play session,
+- invited players cannot view the session page or update layout settings until they join,
+- ended sessions display saved layout settings but do not allow layout changes.
 
-Validation rule:
+Validation and authorization rules:
 
-- submitted layout identifiers must exist in the current course layout options or the request aborts with `422`.
+- submitted layout identifiers must exist in the current course layout options or the request aborts with `422`,
+- submitted roster keys must belong to the current joined player or the request aborts with `403`.
+
+### Game scoring
+
+Implemented behavior:
+
+- the game screen uses a shared `current_hole_index` stored on the play session,
+- each visible player row maps that shared index to the player's own selected course layout,
+- players without selected layouts are skipped and listed in a notice,
+- any joined participant may edit scores for any visible player,
+- score inputs store actual strokes for the hole,
+- saved strokes are keyed by shared hole index, so changing layout keeps each player's entered strokes for Hole 1, Hole 2, and so on,
+- player score summaries are derived as `strokes - hole par`, so under par is negative and over par is positive,
+- score summaries recalculate against the player's currently selected layout,
+- the bottom of the session page renders Chart.js line charts with each visible player's cumulative score against par per hole,
+- plus and minus controls start from the hole par when the score is empty,
+- the next-hole action is blocked until every visible player has a saved score,
+- previous-hole navigation is available after hole 1.
+
+Validation and authorization rules:
+
+- score values must be integers from `1` through `99`,
+- score updates must target joined session participants with a selected layout and a hole at the current index,
+- ended sessions cannot be opened or mutated from the game page.
 
 ### Settings and preferences
 
@@ -285,6 +346,18 @@ Responsibilities:
 - render the main session dashboard.
 
 Source: `app/Livewire/PlaySessionPage.php`
+
+### `PlaySessionGamePage`
+
+Responsibilities:
+
+- guard access to active joined session participants,
+- resolve each player's selected-layout hole for the shared hole index,
+- save and clear per-player hole scores,
+- block next-hole navigation until all visible players have scores,
+- move the shared game position backward and forward.
+
+Source: `app/Livewire/PlaySessionGamePage.php`
 
 ### `PlayerConsole`
 
@@ -465,12 +538,15 @@ Relevant fields:
 - `status`
 - `started_at`
 - `ended_at`
+- `current_hole_index`
 
 Behavior:
 
 - supports authenticated hosts and anonymous-host metadata,
-- currently uses `status = active` for all newly created sessions,
-- host layout selection is stored directly on the session row.
+- uses `status = active` for newly created sessions,
+- host-ended sessions use `status = ended` with `ended_at` populated,
+- game navigation stores the shared current hole index on the session row,
+- legacy anonymous-host layout selection can be stored directly on the session row.
 
 Source: `app/Models/PlaySession.php`
 
@@ -493,13 +569,38 @@ Behavior:
 
 - unique per session/user pair,
 - `status` is used for invite and join state,
-- participant layout selections are stored here for non-host users.
+- participant layout selections are stored here for registered joined users, including the registered host.
 
 Sources:
 
 - `database/migrations/2026_07_03_000008_create_play_sessions_table.php`
 - `database/migrations/2026_07_03_000009_update_play_sessions_for_session_hosts.php`
 - `database/migrations/2026_07_03_000010_add_layout_settings_to_play_sessions.php`
+- `database/migrations/2026_07_07_000001_add_game_scoring_to_play_sessions.php`
+
+### `play_session_scores`
+
+Purpose:
+
+- store per-player strokes for concrete holes in a play session.
+
+Relevant fields:
+
+- `play_session_id`
+- `user_id`
+- `hole_id`
+- `hole_index`
+- `strokes`
+
+Behavior:
+
+- unique per session/user/hole,
+- unique per session/user/hole index,
+- stores actual strokes, not score relative to par,
+- uses `hole_index` as the stable score identity across layout switches,
+- keeps the concrete `hole_id` as a reference to the current layout hole used when the score was last saved.
+
+Source: `app/Models/PlaySessionScore.php`
 
 ## 8. Current UX and configuration rules
 
@@ -557,7 +658,7 @@ These are not necessarily bugs, but they are important to understand when extend
 - there is no dedicated Laravel auth guard or password reset flow; authentication is a lightweight session-backed current-player pattern,
 - admin tools are guarded by user role, not a separate admin session type,
 - guests cannot personalize locale/theme,
-- play sessions have start and join flows, but no implemented end-session lifecycle yet,
+- play sessions can be started, joined, and ended, but there is no historical session browser yet,
 - course detail pages may trigger background data refresh behavior at request time,
 - importer richness depends on what UDisc exposes in structured payloads for a given course page.
 
@@ -569,6 +670,6 @@ When changing behavior in the future, start with these files:
 - shared auth state: `app/Services/CurrentPlayerResolver.php`
 - admin gating: `app/Http/Middleware/EnsureAdminAuthenticated.php`
 - preferences and view state: `app/Http/Middleware/ApplyUserPreferences.php`, `app/Providers/AppServiceProvider.php`
-- session workflow: `app/Livewire/PlaySessionPage.php`, `app/Livewire/PlayerConsole.php`, `app/Services/PlaySessionStarter.php`
+- session workflow: `app/Livewire/PlaySessionPage.php`, `app/Livewire/PlaySessionGamePage.php`, `app/Livewire/PlayerConsole.php`, `app/Services/PlaySessionStarter.php`
 - course import pipeline: `app/Livewire/Admin/CourseManager.php`, `app/Services/UDiscCourseImporter.php`
 - functional regression coverage: `tests/Feature/`

@@ -6,6 +6,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PlaySession extends Model
 {
@@ -18,6 +19,7 @@ class PlaySession extends Model
         'status',
         'started_at',
         'ended_at',
+        'current_hole_index',
     ];
 
     protected function casts(): array
@@ -25,6 +27,7 @@ class PlaySession extends Model
         return [
             'started_at' => 'datetime',
             'ended_at' => 'datetime',
+            'current_hole_index' => 'integer',
         ];
     }
 
@@ -43,6 +46,11 @@ class PlaySession extends Model
         return $this->belongsToMany(User::class)
             ->withPivot(['status', 'invited_at', 'joined_at', 'selected_layout_id'])
             ->withTimestamps();
+    }
+
+    public function scores(): HasMany
+    {
+        return $this->hasMany(PlaySessionScore::class);
     }
 
     public function hasAnonymousHostParticipant(): bool

@@ -42,7 +42,7 @@ class AdminAuthenticationTest extends TestCase
             'role' => User::ROLE_ADMIN,
         ]);
 
-        Course::query()->create([
+        $course = Course::query()->create([
             'name' => 'Hästhagen',
             'slug' => 'haesthagen-M8Wu',
             'udisc_url' => 'https://udisc.com/courses/haesthagen-M8Wu',
@@ -54,6 +54,7 @@ class AdminAuthenticationTest extends TestCase
             ->assertOk()
             ->assertSee('Admin panel')
             ->assertSee('Log out')
+            ->assertSee(route('courses.show', $course), false)
             ->assertDontSee('User panel');
     }
 

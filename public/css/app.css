@@ -182,10 +182,6 @@ p {
     padding-top: 14px;
 }
 
-#active-sessions {
-    margin-bottom: 2rem;
-}
-
 .sports-topbar {
     display: grid;
     gap: 16px;
@@ -552,12 +548,168 @@ p {
     color: var(--ink-strong);
 }
 
+.game-panel,
+.game-score-list,
+.game-score-card,
+.game-score-card__player,
+.game-notice {
+    display: grid;
+    gap: 12px;
+}
+
+.game-notice {
+    padding: 14px;
+    border: 1px solid rgba(var(--accent-rgb), 0.22);
+    border-radius: 16px;
+    background: rgba(var(--accent-rgb), 0.08);
+}
+
+.game-notice strong,
+.game-score-card__player strong {
+    color: var(--ink-strong);
+}
+
+.game-notice p,
+.game-score-card__player span,
+.game-score-card__player small {
+    margin: 0;
+    color: var(--ink-soft);
+    line-height: 1.45;
+}
+
+.game-score-card {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    padding: 14px;
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    background: var(--card-background);
+}
+
+.game-score-card__controls {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 48px minmax(84px, 120px) 48px;
+    align-items: center;
+    gap: 8px;
+}
+
+.game-score-card__points {
+    min-width: 68px;
+    padding: 0.38rem 0.62rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--card-background-strong);
+    color: var(--ink-strong);
+    font-weight: 800;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.game-score-card__points--positive {
+    border-color: rgba(255, 109, 109, 0.36);
+    color: var(--danger);
+}
+
+.game-score-card__points--negative {
+    border-color: rgba(126, 215, 165, 0.36);
+    color: var(--difficulty-beginner);
+}
+
+.game-score-card .error-text {
+    grid-column: 1 / -1;
+}
+
+.game-score-card__input {
+    min-height: 48px;
+    padding-inline: 0.75rem;
+    text-align: center;
+}
+
+.score-stepper {
+    width: 48px;
+    height: 48px;
+    display: inline-grid;
+    place-items: center;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--card-background-strong);
+    color: var(--ink-strong);
+    font: inherit;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.score-stepper:hover {
+    border-color: rgba(var(--accent-rgb), 0.4);
+}
+
+.game-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: space-between;
+}
+
+.game-empty .actions {
+    justify-content: center;
+    margin-top: 18px;
+}
+
+.game-chart-section,
+.game-chart-list,
+.game-chart-card,
+.game-chart-card__header {
+    display: grid;
+    gap: 12px;
+}
+
+.game-chart-section {
+    padding-top: 16px;
+    border-top: 1px solid var(--card-border);
+}
+
+.game-chart-card {
+    padding: 14px;
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    background: var(--card-background);
+}
+
+.game-chart-card__header {
+    gap: 4px;
+}
+
+.game-chart-card__header strong {
+    color: var(--ink-strong);
+}
+
+.game-chart-card__header span {
+    color: var(--ink-soft);
+}
+
+.game-chart-card__canvas {
+    position: relative;
+    height: 220px;
+    min-height: 220px;
+}
+
 .badge--subtle {
     background: var(--card-background-strong);
     color: var(--ink-strong);
 }
 
+.badge--active-session {
+    border-color: rgba(var(--accent-rgb), 0.45);
+    background: rgba(var(--accent-rgb), 0.16);
+    color: var(--ink-strong);
+    box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.14);
+}
+
 .sports-main {
+    display: grid;
+    align-content: start;
+    gap: 18px;
     padding-top: 18px;
     padding-bottom: 42px;
 }
@@ -695,11 +847,18 @@ p {
     border-color: var(--line);
 }
 
+.button-danger {
+    background: rgba(255, 109, 109, 0.12);
+    color: var(--danger);
+    border-color: rgba(255, 109, 109, 0.38);
+}
+
 .button-dark {
     background: var(--card-background-strong);
 }
 
 .button-primary:hover,
+.button-danger:hover,
 .button-secondary:hover,
 .text-link:hover {
     opacity: 0.9;
@@ -732,6 +891,55 @@ p {
     border-top-color: currentColor;
     border-radius: 50%;
     animation: button-spin 0.8s linear infinite;
+}
+
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 900;
+    display: grid;
+    place-items: center;
+    padding: 18px;
+    background: rgba(4, 7, 12, 0.72);
+    backdrop-filter: blur(6px);
+}
+
+.modal-dialog {
+    width: min(100%, 460px);
+    display: grid;
+    gap: 16px;
+    padding: 20px;
+    border: 1px solid var(--card-border);
+    border-radius: 18px;
+    background: var(--toast-background);
+    color: var(--ink-strong);
+    box-shadow: var(--shadow);
+}
+
+.modal-dialog--danger {
+    border-color: rgba(255, 109, 109, 0.34);
+}
+
+.modal-dialog__header {
+    display: grid;
+    gap: 6px;
+}
+
+.modal-dialog__header h2,
+.modal-dialog__copy {
+    margin: 0;
+}
+
+.modal-dialog__copy {
+    color: var(--copy);
+    line-height: 1.6;
+}
+
+.modal-dialog__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: flex-end;
 }
 
 .toast-shell {

@@ -87,50 +87,6 @@
             </header>
 
             <main class="sports-main">
-                @if (($activeSessions ?? collect())->isNotEmpty())
-                    <section class="sports-panel sports-panel--index" id="active-sessions">
-                        <div class="sports-panel__heading sports-panel__heading--stacked">
-                            <div>
-                                <p class="eyebrow">{{ __('ui.home.active_sessions_eyebrow') }}</p>
-                                <h2>{{ __('ui.home.active_sessions_title') }}</h2>
-                            </div>
-                            <p class="panel-note">{{ __('ui.home.active_sessions_note') }}</p>
-                        </div>
-
-                        <div class="course-list">
-                            @foreach ($activeSessions as $activeSession)
-                                @php
-                                    $joinedCount = $activeSession->players->filter(fn ($player) => $player->pivot->status === 'joined')->count() + ($activeSession->hasAnonymousHostParticipant() ? 1 : 0);
-                                    $invitedCount = $activeSession->players->filter(fn ($player) => $player->pivot->status === 'invited')->count();
-                                    $hostName = $activeSession->host?->name ?? $activeSession->host_name ?? __('ui.session.host_fallback');
-                                @endphp
-
-                                <article class="course-list-item">
-                                    <div class="dashboard-header">
-                                        <div>
-                                            <h3>{{ $activeSession->course->name }}</h3>
-                                            <p class="muted">{{ __('ui.session.invited_by', ['name' => $hostName]) }}</p>
-                                        </div>
-                                        <div class="badge">{{ $activeSession->started_at?->diffForHumans() ?? __('ui.course.na') }}</div>
-                                    </div>
-
-                                    <div class="course-admin-footer">
-                                        <div class="course-admin-footer__stats">
-                                            <span class="muted">{{ trans_choice('ui.session.player_count', $joinedCount, ['count' => $joinedCount]) }}</span>
-                                            <span class="muted">{{ trans_choice('ui.session.pending_count', $invitedCount, ['count' => $invitedCount]) }}</span>
-                                        </div>
-
-                                        <div class="course-admin-footer__actions">
-                                            <a class="button button-primary" href="{{ route('sessions.show', $activeSession) }}">{{ __('ui.session.open_session') }}</a>
-                                            <a class="text-link" href="{{ route('courses.show', $activeSession->course) }}">{{ __('ui.session.back_to_course') }}</a>
-                                        </div>
-                                    </div>
-                                </article>
-                            @endforeach
-                        </div>
-                    </section>
-                @endif
-
                 @if ($courses->isNotEmpty())
                     <section class="sports-panel sports-panel--index" id="course-list">
                         <div class="sports-panel__heading sports-panel__heading--stacked">

@@ -52,4 +52,9 @@ class User extends Authenticatable
             ->withPivot(['status', 'invited_at', 'joined_at', 'selected_layout_id'])
             ->withTimestamps();
     }
+
+    public function playSessionScores(): HasMany
+    {
+        return $this->hasMany(PlaySessionScore::class);
+    }
 }
