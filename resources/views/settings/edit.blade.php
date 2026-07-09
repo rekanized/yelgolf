@@ -4,6 +4,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{{ __('ui.settings.page_title') }} | {{ config('app.name') }}</title>
+        @include('partials.favicons')
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0,0">
@@ -13,13 +14,7 @@
         <div class="sports-page">
             <header class="sports-header">
                 <div class="sports-topbar">
-                    <a class="sports-brand" href="{{ url('/') }}">
-                        <span class="sports-brand__crest">YG</span>
-                        <span>
-                            <strong>Yelgolf</strong>
-                            <span class="sports-brand__sub">{{ __('ui.brand.subtitle') }}</span>
-                        </span>
-                    </a>
+                    @include('partials.brand')
                 </div>
 
                 @include('partials.sports-nav')

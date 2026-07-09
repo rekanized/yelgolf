@@ -234,14 +234,22 @@ p {
 .sports-brand__crest {
     width: 52px;
     height: 52px;
+    flex: 0 0 auto;
     border-radius: 16px;
     display: grid;
     place-items: center;
-    color: #fff;
-    background: linear-gradient(145deg, #ff3945 0%, #b80f1c 100%);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
-    font-family: "Barlow Condensed", Impact, sans-serif;
-    font-size: 1.4rem;
+    overflow: hidden;
+    background: #f7fbff;
+    box-shadow:
+        0 10px 24px rgba(0, 0, 0, 0.18),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+}
+
+.sports-brand__crest img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .sports-utility {

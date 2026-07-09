@@ -1,13 +1,7 @@
 <div class="sports-page">
     <header class="sports-header">
         <div class="sports-topbar">
-            <a class="sports-brand" href="{{ url('/') }}">
-                <span class="sports-brand__crest">YG</span>
-                <span>
-                    <strong>Yelgolf</strong>
-                    <span class="sports-brand__sub">{{ __('ui.brand.subtitle') }}</span>
-                </span>
-            </a>
+            @include('partials.brand')
         </div>
 
         @include('partials.sports-nav')
