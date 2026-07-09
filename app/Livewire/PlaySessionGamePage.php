@@ -102,7 +102,9 @@ class PlaySessionGamePage extends Component
     {
         abort_unless($this->canUseGame($resolver), 403);
 
-        if (! $this->canAdvance()) {
+        $rows = $this->scoreRows();
+
+        if (! $this->canAdvance($rows)) {
             $this->dispatch('notify', message: __('ui.game.complete_scores_first'), type: 'error');
 
             return;
@@ -111,6 +113,8 @@ class PlaySessionGamePage extends Component
         if ($this->currentHoleIndex() >= $this->maxPlayableHoleIndex()) {
             return;
         }
+
+        $this->savePendingScoreInputs($rows);
 
         $this->playSession->forceFill([
             'current_hole_index' => $this->currentHoleIndex() + 1,
@@ -290,7 +294,7 @@ class PlaySessionGamePage extends Component
         $rows ??= $this->scoreRows();
 
         return $rows->isNotEmpty()
-            && $rows->every(fn (array $row): bool => filled($row['strokes']));
+            && $rows->every(fn (array $row): bool => $this->scoreValueForRow($row) !== null);
     }
 
     protected function refreshScoreInputs(?Collection $rows = null): void
@@ -298,10 +302,73 @@ class PlaySessionGamePage extends Component
         $rows ??= $this->scoreRows();
 
         $this->scoreInputs = $rows
-            ->mapWithKeys(fn (array $row): array => [
-                $row['user_id'] => $row['strokes'] ? (string) $row['strokes'] : '',
-            ])
+            ->mapWithKeys(function (array $row): array {
+                $scoreValue = $this->prefilledScoreValueForRow($row);
+
+                return [$row['user_id'] => $scoreValue !== null ? (string) $scoreValue : ''];
+            })
             ->all();
+    }
+
+    protected function savePendingScoreInputs(Collection $rows): void
+    {
+        $rows
+            ->each(function (array $row): void {
+                $scoreValue = $this->scoreValueForRow($row);
+
+                if ($scoreValue === null) {
+                    return;
+                }
+
+                $this->playSession->scores()->updateOrCreate(
+                    [
+                        'user_id' => $row['user_id'],
+                        'hole_index' => $this->currentHoleIndex(),
+                    ],
+                    [
+                        'hole_id' => $row['hole_id'],
+                        'strokes' => $scoreValue,
+                    ],
+                );
+
+                $this->scoreInputs[$row['user_id']] = (string) $scoreValue;
+                $this->resetErrorBag('scoreInputs.'.$row['user_id']);
+            });
+    }
+
+    protected function scoreValueForRow(array $row): ?int
+    {
+        if (array_key_exists($row['user_id'], $this->scoreInputs)) {
+            $inputValue = trim((string) $this->scoreInputs[$row['user_id']]);
+
+            if ($inputValue !== '') {
+                return $this->validScoreValue($inputValue);
+            }
+        }
+
+        return $this->prefilledScoreValueForRow($row);
+    }
+
+    protected function prefilledScoreValueForRow(array $row): ?int
+    {
+        if ($row['strokes'] !== null) {
+            return $this->validScoreValue($row['strokes']);
+        }
+
+        return $this->validScoreValue($row['par']);
+    }
+
+    protected function validScoreValue(mixed $value): ?int
+    {
+        $value = trim((string) $value);
+
+        if ($value === '' || ! ctype_digit($value)) {
+            return null;
+        }
+
+        $scoreValue = (int) $value;
+
+        return $scoreValue >= 1 && $scoreValue <= 99 ? $scoreValue : null;
     }
 
     protected function loadPlaySession(PlaySession $playSession): void

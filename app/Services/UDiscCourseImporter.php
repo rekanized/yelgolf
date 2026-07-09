@@ -11,6 +11,12 @@ use RuntimeException;
 
 class UDiscCourseImporter
 {
+    private const MAX_DATABASE_STRING_LENGTH = 255;
+
+    private const MAX_DESCRIPTION_LENGTH = 10000;
+
+    private const MAX_SLUG_LENGTH = 180;
+
     public function import(string $url): Course
     {
         $normalizedUrl = $this->normalizeUrl($url);
@@ -18,7 +24,7 @@ class UDiscCourseImporter
         $response = Http::withHeaders([
             'User-Agent' => 'Mozilla/5.0 (compatible; YelgolfBot/1.0; +https://yelgolf.local)',
             'Accept-Language' => 'en-US,en;q=0.9',
-        ])->timeout(20)->get($normalizedUrl);
+        ])->connectTimeout(5)->timeout(20)->get($normalizedUrl);
 
         if (! $response->successful()) {
             throw new RuntimeException('UDisc did not return a successful response.');
@@ -68,9 +74,9 @@ class UDiscCourseImporter
 
         return [
             'course' => [
-                'name' => html_entity_decode(trim($matches[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+                'name' => $this->limitedString(html_entity_decode(trim($matches[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8')),
                 'slug' => $this->extractSlug($normalizedUrl),
-                'udisc_id' => $this->extractShortId($normalizedUrl),
+                'udisc_id' => $this->limitedString($this->extractShortId($normalizedUrl)),
                 'photos' => $this->extractPhotoUrls($html),
                 'target_type' => null,
                 'tee_types' => null,
@@ -84,8 +90,8 @@ class UDiscCourseImporter
                 'is_stroller_friendly' => null,
                 'accessibility' => null,
                 'accessibility_description' => null,
-                'location_name' => html_entity_decode(trim($matches[2]), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
-                'description' => $this->extractAboutText($pageText),
+                'location_name' => $this->limitedString(html_entity_decode(trim($matches[2]), ENT_QUOTES | ENT_HTML5, 'UTF-8')),
+                'description' => $this->limitedString($this->extractAboutText($pageText), self::MAX_DESCRIPTION_LENGTH),
                 'holes_count' => $this->extractHolesCount($pageText),
                 'rating' => $ratingStats['rating'],
                 'ratings_count' => $ratingStats['ratings_count'],
@@ -104,7 +110,14 @@ class UDiscCourseImporter
         $trimmed = trim($url);
         $parts = parse_url($trimmed);
 
-        if (! is_array($parts) || ($parts['host'] ?? null) !== 'udisc.com') {
+        if ($trimmed === '' || strlen($trimmed) > 2048 || ! is_array($parts)) {
+            throw new InvalidArgumentException('Please enter a valid UDisc course URL.');
+        }
+
+        $scheme = strtolower((string) ($parts['scheme'] ?? ''));
+        $host = strtolower((string) ($parts['host'] ?? ''));
+
+        if (! in_array($scheme, ['http', 'https'], true) || $host !== 'udisc.com') {
             throw new InvalidArgumentException('Please enter a valid UDisc course URL.');
         }
 
@@ -117,7 +130,7 @@ class UDiscCourseImporter
         $segments = explode('/', $path);
         $slug = $segments[1] ?? null;
 
-        if (! $slug || ! preg_match('/^[A-Za-z0-9\-]+$/', $slug)) {
+        if (! $slug || strlen($slug) > self::MAX_SLUG_LENGTH || ! preg_match('/^[A-Za-z0-9\-]+$/', $slug)) {
             throw new InvalidArgumentException('The UDisc course URL is not in the expected format.');
         }
 
@@ -328,6 +341,8 @@ class UDiscCourseImporter
             return $cache[$reference] = $value;
         }
 
+        $cache[$reference] = null;
+
         $isAssociative = array_keys($value) !== range(0, count($value) - 1);
 
         if (! $isAssociative) {
@@ -365,26 +380,27 @@ class UDiscCourseImporter
     private function buildStructuredCourseAttributes(array $courseData, array $courseDetailData, string $html, string $url): array
     {
         [$latitude, $longitude] = $this->extractCoordinates($html);
+        $normalizedUrl = $this->normalizeUrl($url);
 
         return [
-            'name' => $courseData['name'] ?? $this->extractTitleNameFallback($html),
-            'slug' => $this->extractSlug($this->normalizeUrl($url)),
-            'udisc_id' => $courseData['shortId'] ?? $this->extractShortId($url),
+            'name' => $this->limitedString($courseData['name'] ?? $this->extractTitleNameFallback($html)) ?? $this->extractSlug($normalizedUrl),
+            'slug' => $this->extractSlug($normalizedUrl),
+            'udisc_id' => $this->limitedString($courseData['shortId'] ?? $this->extractShortId($normalizedUrl)),
             'photos' => $this->extractPhotoUrls($html),
-            'target_type' => $courseDetailData['targetTypeDescription'] ?? null,
+            'target_type' => $this->limitedString($courseDetailData['targetTypeDescription'] ?? null),
             'tee_types' => $this->normalizeStringList($courseDetailData['activeTeeTypes'] ?? null),
             'land_types' => $this->normalizeStringList($courseDetailData['landType'] ?? null, ['other']),
-            'property_type' => $courseDetailData['propertyType'] ?? null,
+            'property_type' => $this->limitedString($courseDetailData['propertyType'] ?? null),
             'difficulty_levels' => $this->normalizeStringList($courseDetailData['difficultyBins'] ?? null),
             'has_bathroom' => $courseData['hasBathroom'] ?? null,
             'has_drinking_water' => $courseData['hasDrinkingWater'] ?? null,
             'is_cart_friendly' => $courseData['isCartFriendly'] ?? null,
             'is_dog_friendly' => $courseData['isDogFriendly'] ?? null,
             'is_stroller_friendly' => $courseDetailData['isStrollerFriendly'] ?? null,
-            'accessibility' => $courseDetailData['accessibility'] ?? null,
-            'accessibility_description' => $courseDetailData['accessibilityDescription'] ?? null,
-            'location_name' => $courseData['locationText'] ?? null,
-            'description' => $courseData['longDescription'] ?? $this->extractAboutText($this->normalizePageText($html)),
+            'accessibility' => $this->limitedString($courseDetailData['accessibility'] ?? null),
+            'accessibility_description' => $this->limitedString($courseDetailData['accessibilityDescription'] ?? null, self::MAX_DESCRIPTION_LENGTH),
+            'location_name' => $this->limitedString($courseData['locationText'] ?? null),
+            'description' => $this->limitedString($courseData['longDescription'] ?? $this->extractAboutText($this->normalizePageText($html)), self::MAX_DESCRIPTION_LENGTH),
             'holes_count' => isset($courseData['holeCount']) ? (int) $courseData['holeCount'] : $this->extractHolesCount($this->normalizePageText($html)),
             'rating' => isset($courseData['ratingAverage']) ? (float) $courseData['ratingAverage'] : null,
             'ratings_count' => isset($courseData['ratingCount']) ? (int) $courseData['ratingCount'] : null,
@@ -417,15 +433,15 @@ class UDiscCourseImporter
                 $holeNumber = ctype_digit($holeLabel) ? (int) $holeLabel : null;
 
                 $holes[] = [
-                    'udisc_hole_id' => $hole['holeId'] ?? null,
+                    'udisc_hole_id' => $this->limitedString($hole['holeId'] ?? null),
                     'layout_id' => isset($layout['layoutId']) ? (int) $layout['layoutId'] : null,
-                    'layout_name' => $layout['layoutName'] ?? $layout['name'] ?? null,
+                    'layout_name' => $this->limitedString($layout['layoutName'] ?? $layout['name'] ?? null),
                     'layout_caddie_book_url' => $this->extractLayoutCaddieBookUrl($layout, $courseUrl),
-                    'layout_difficulty' => $layout['difficultyBin'] ?? null,
+                    'layout_difficulty' => $this->limitedString($layout['difficultyBin'] ?? null),
                     'layout_order' => $layoutIndex + 1,
                     'sort_order' => $holeIndex + 1,
                     'number' => $holeNumber,
-                    'hole_label' => $holeLabel !== '' ? $holeLabel : null,
+                    'hole_label' => $holeLabel !== '' ? $this->limitedString($holeLabel) : null,
                     'par' => isset($hole['par']) ? (int) $hole['par'] : null,
                     'distance_meters' => $this->extractHoleDistance($hole, 'meters'),
                     'distance_feet' => $this->extractHoleDistance($hole, 'feet'),
@@ -448,11 +464,11 @@ class UDiscCourseImporter
             $trimmed = trim($value);
 
             if (Str::startsWith($trimmed, 'https://udisc.com/')) {
-                return $trimmed;
+                return $this->limitedString($trimmed);
             }
 
             if (Str::startsWith($trimmed, '/')) {
-                return 'https://udisc.com'.$trimmed;
+                return $this->limitedString('https://udisc.com'.$trimmed);
             }
         }
 
@@ -460,7 +476,7 @@ class UDiscCourseImporter
             return null;
         }
 
-        return sprintf('%s/layouts/%d/caddie-book', $courseUrl, (int) $layout['layoutId']);
+        return $this->limitedString(sprintf('%s/layouts/%d/caddie-book', $courseUrl, (int) $layout['layoutId']));
     }
 
     private function extractHoleDistance(array $hole, string $unit): ?float
@@ -490,7 +506,8 @@ class UDiscCourseImporter
 
         $normalized = collect($values)
             ->filter(fn (mixed $value): bool => is_string($value) && trim($value) !== '')
-            ->map(fn (string $value): string => trim($value))
+            ->map(fn (string $value): ?string => $this->limitedString($value))
+            ->filter()
             ->reject(fn (string $value): bool => in_array($value, $excludedValues, true))
             ->unique()
             ->values()
@@ -524,5 +541,20 @@ class UDiscCourseImporter
     private function cleanText(?string $text): string
     {
         return trim((string) preg_replace('/\s+/u', ' ', (string) $text));
+    }
+
+    private function limitedString(mixed $value, int $limit = self::MAX_DATABASE_STRING_LENGTH): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $string = trim((string) $value);
+
+        if ($string === '') {
+            return null;
+        }
+
+        return Str::limit($string, $limit, '');
     }
 }

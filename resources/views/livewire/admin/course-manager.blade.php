@@ -125,7 +125,7 @@
                                             {{ __('ui.admin.updating') }}
                                         </span>
                                     </button>
-                                    <a class="text-link" href="{{ $course->udisc_url }}" target="_blank" rel="noreferrer">{{ __('ui.admin.open_source') }}</a>
+                                    <a class="text-link" href="{{ $course->udisc_url }}" target="_blank" rel="noopener noreferrer">{{ __('ui.admin.open_source') }}</a>
                                 </div>
                             </div>
                         </article>

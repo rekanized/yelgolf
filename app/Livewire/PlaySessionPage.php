@@ -31,9 +31,10 @@ class PlaySessionPage extends Component
         abort_unless($this->isParticipant($resolver), 403);
     }
 
-    public function openInvitePicker(): void
+    public function openInvitePicker(CurrentPlayerResolver $resolver): void
     {
         abort_unless($this->playSession->status === 'active', 403);
+        abort_unless($this->viewerIsHost($resolver), 403);
 
         $this->showInvitePicker = true;
     }
@@ -203,10 +204,13 @@ class PlaySessionPage extends Component
 
     public function render(CurrentPlayerResolver $resolver)
     {
-        $selectedInvitees = $this->selectedInvitees();
-        $inviteOptions = $this->inviteOptions($selectedInvitees);
         $isHost = $this->viewerIsHost($resolver);
         $isParticipant = $this->isParticipant($resolver);
+        $canInvite = $isHost && $this->playSession->status === 'active';
+        $selectedInvitees = $canInvite ? $this->selectedInvitees() : collect();
+        $inviteOptions = $canInvite && $this->showInvitePicker
+            ? $this->inviteOptions($selectedInvitees)
+            : collect();
         $editableParticipantKeys = $this->editableParticipantKeys($resolver);
         $layoutOptions = $this->layoutOptions();
         $layoutNames = $layoutOptions

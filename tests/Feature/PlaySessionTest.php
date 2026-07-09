@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Livewire\PlaySessionPage;
-use App\Livewire\PlaySessionGamePage;
 use App\Livewire\PlayerConsole;
+use App\Livewire\PlaySessionGamePage;
+use App\Livewire\PlaySessionPage;
 use App\Models\Course;
 use App\Models\Hole;
 use App\Models\PlaySession;
@@ -310,6 +310,8 @@ class PlaySessionTest extends TestCase
             ->assertSee('Session Host')
             ->assertSee('Hästhagen Främre')
             ->assertSee('Par 3')
+            ->assertSee('wire:poll.3s', false)
+            ->assertSet('scoreInputs.'.$host->id, '3')
             ->assertSee('Waiting on layouts')
             ->assertSee('Guest Player');
     }
@@ -357,7 +359,7 @@ class PlaySessionTest extends TestCase
         $this->assertSame(1, $session->fresh()->current_hole_index);
     }
 
-    public function test_next_hole_waits_for_every_visible_player_score(): void
+    public function test_next_hole_uses_prefilled_par_scores_for_visible_players(): void
     {
         $host = User::factory()->create(['name' => 'Session Host']);
         $invitee = User::factory()->create(['name' => 'Guest Player']);
@@ -372,14 +374,24 @@ class PlaySessionTest extends TestCase
 
         Livewire::withQueryParams([])
             ->test(PlaySessionGamePage::class, ['playSession' => $session])
-            ->call('saveScore', $host->id, '3')
-            ->call('nextHole')
-            ->assertSee('Hole 1')
-            ->call('saveScore', $invitee->id, '4')
+            ->assertSet('scoreInputs.'.$host->id, '3')
+            ->assertSet('scoreInputs.'.$invitee->id, '3')
             ->call('nextHole')
             ->assertSee('Hole 2');
 
         $this->assertSame(2, $session->fresh()->current_hole_index);
+        $this->assertDatabaseHas('play_session_scores', [
+            'play_session_id' => $session->id,
+            'user_id' => $host->id,
+            'hole_index' => 1,
+            'strokes' => 3,
+        ]);
+        $this->assertDatabaseHas('play_session_scores', [
+            'play_session_id' => $session->id,
+            'user_id' => $invitee->id,
+            'hole_index' => 1,
+            'strokes' => 3,
+        ]);
     }
 
     public function test_player_specific_layouts_map_shared_hole_index_to_each_selected_layout(): void

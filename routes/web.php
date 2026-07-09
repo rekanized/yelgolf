@@ -12,11 +12,14 @@ use App\Services\CurrentPlayerResolver;
 use App\Services\PlaySessionStarter;
 use App\Services\UDiscCourseImporter;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Str;
 
 Route::get('/', function (Request $request) {
-    $searchQuery = trim((string) $request->query('q', ''));
+    $validated = $request->validate([
+        'q' => ['nullable', 'string', 'max:100'],
+    ]);
+    $searchQuery = trim((string) ($validated['q'] ?? ''));
 
     return view('welcome', [
         'courses' => Course::query()
@@ -45,14 +48,14 @@ Route::post('/preferences', function (Request $request) {
     $validated = $request->validate([
         'locale' => ['required', 'string', 'in:'.implode(',', $availableLocales)],
         'theme' => ['required', 'string', 'in:'.implode(',', $availableThemes)],
-        'redirect_to' => ['nullable', 'url'],
+        'redirect_to' => ['nullable', 'url', 'max:2048'],
     ]);
 
     $request->session()->put('locale', $validated['locale']);
     $request->session()->put('theme', $validated['theme']);
 
     $redirectTo = (string) ($validated['redirect_to'] ?? '');
-    $targetUrl = Str::startsWith($redirectTo, url('/')) ? $redirectTo : url('/');
+    $targetUrl = yelgolf_same_origin_url($redirectTo) ? $redirectTo : url('/');
 
     return redirect()->to($targetUrl)
         ->withCookie(cookie()->forever(config('yelgolf.locale_cookie', 'yelgolf_locale'), $validated['locale']))
@@ -126,11 +129,10 @@ Route::get('/login', UserLoginForm::class)->name('login');
 Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])->name('auth.google.redirect');
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');
 
-Route::post('/logout', function () {
-    auth()->logout();
-    request()->session()->forget('current_player_id');
-    request()->session()->forget('admin_authenticated');
-    request()->session()->regenerate();
+Route::post('/logout', function (Request $request) {
+    Auth::logout();
+    $request->session()->invalidate();
+    $request->session()->regenerateToken();
 
     return redirect()->route('home');
 })->name('logout');
@@ -144,3 +146,31 @@ Route::prefix('admin')->group(function (): void {
         ->middleware('admin.auth')
         ->name('admin.users');
 });
+
+if (! function_exists('yelgolf_same_origin_url')) {
+    function yelgolf_same_origin_url(string $url): bool
+    {
+        if ($url === '') {
+            return false;
+        }
+
+        $applicationUrl = parse_url(url('/'));
+        $candidateUrl = parse_url($url);
+
+        if (! is_array($applicationUrl) || ! is_array($candidateUrl)) {
+            return false;
+        }
+
+        $applicationScheme = strtolower((string) ($applicationUrl['scheme'] ?? ''));
+        $candidateScheme = strtolower((string) ($candidateUrl['scheme'] ?? ''));
+        $applicationHost = strtolower((string) ($applicationUrl['host'] ?? ''));
+        $candidateHost = strtolower((string) ($candidateUrl['host'] ?? ''));
+        $applicationPort = (int) ($applicationUrl['port'] ?? ($applicationScheme === 'https' ? 443 : 80));
+        $candidatePort = (int) ($candidateUrl['port'] ?? ($candidateScheme === 'https' ? 443 : 80));
+
+        return $applicationScheme === $candidateScheme
+            && $applicationHost !== ''
+            && $applicationHost === $candidateHost
+            && $applicationPort === $candidatePort;
+    }
+}

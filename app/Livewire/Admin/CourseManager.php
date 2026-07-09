@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Admin;
 
+use App\Livewire\Admin\Concerns\EnsuresAdminAccess;
 use App\Models\Course;
 use App\Services\UDiscCourseImporter;
 use InvalidArgumentException;
@@ -10,12 +11,21 @@ use Throwable;
 
 class CourseManager extends Component
 {
+    use EnsuresAdminAccess;
+
     public string $udiscUrl = '';
+
+    public function mount(): void
+    {
+        $this->ensureAdminAccess();
+    }
 
     public function importCourse(UDiscCourseImporter $importer): void
     {
+        $this->ensureAdminAccess();
+
         $validated = $this->validate([
-            'udiscUrl' => ['required', 'url'],
+            'udiscUrl' => ['required', 'url', 'max:2048'],
         ]);
 
         try {
@@ -40,6 +50,8 @@ class CourseManager extends Component
 
     public function updateCourse(int $courseId, UDiscCourseImporter $importer): void
     {
+        $this->ensureAdminAccess();
+
         $course = Course::query()->findOrFail($courseId);
 
         try {
@@ -57,6 +69,8 @@ class CourseManager extends Component
 
     public function render()
     {
+        $this->ensureAdminAccess();
+
         return view('livewire.admin.course-manager', [
             'courses' => Course::query()->with('holes')->orderBy('name')->get(),
         ])->layout('layouts.app', ['title' => __('ui.admin.page_title')]);

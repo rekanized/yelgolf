@@ -2,7 +2,7 @@
 
 This document is a durable reference for how the current application works. It is based on the implemented Laravel and Livewire code, the database schema, and the passing test suite.
 
-Last verified: 2026-07-03
+Last verified: 2026-07-09
 Validation command: `php artisan test`
 
 ## 1. Product summary
@@ -32,7 +32,8 @@ Role checks are handled through the current signed-in user stored in session sta
 
 - `/login` is the only login page.
 - Users sign in with Google OAuth.
-- Google users are matched to existing users by email before a new player user is created.
+- Google users must provide a verified email address and Google account id.
+- Existing users are matched by Google account id first, then by verified email before a new player user is created.
 - Emails listed in `GOOGLE_ADMIN_EMAILS` are granted the admin role on login.
 
 ### Admin-only areas
@@ -175,7 +176,7 @@ Source: `app/Http/Controllers/GoogleAuthController.php`
 Purpose:
 
 - handles the Google OAuth callback,
-- finds or creates the local user,
+- finds or creates the local user from a verified Google identity,
 - stores the current player in session,
 - redirects to `/#course-list`.
 
@@ -189,9 +190,8 @@ Purpose:
 
 Key behavior:
 
-- removes `current_player_id`,
-- removes `admin_authenticated`,
-- regenerates the session.
+- logs out Laravel's web guard,
+- invalidates the session and regenerates the CSRF token.
 
 Source: `routes/web.php`
 
@@ -248,7 +248,7 @@ Important note:
 Implemented behavior:
 
 - the login page sends users through Google OAuth,
-- Google accounts without an email are rejected with a translated validation error,
+- Google accounts without a verified email or provider id are rejected with a translated validation error,
 - successful login stores the current player in session and redirects to `/#course-list`.
 
 Important note:
@@ -316,8 +316,8 @@ Implemented behavior:
 - player score summaries are derived as `strokes - hole par`, so under par is negative and over par is positive,
 - score summaries recalculate against the player's currently selected layout,
 - the bottom of the session page renders Chart.js line charts with each visible player's cumulative score against par per hole,
-- plus and minus controls start from the hole par when the score is empty,
-- the next-hole action is blocked until every visible player has a saved score,
+- score inputs default to the hole par when the score is empty,
+- the next-hole action saves any visible player's default par score before moving forward,
 - previous-hole navigation is available after hole 1.
 
 Validation and authorization rules:
@@ -356,7 +356,8 @@ Responsibilities:
 
 - redirect to Google,
 - handle the OAuth callback,
-- resolve or create the signed-in user by email,
+- resolve or create the signed-in user by Google account id or verified email,
+- store only validated Google profile fields,
 - set the current player in session,
 - redirect to the course list.
 
@@ -474,6 +475,11 @@ Source: `app/Services/UDiscCourseImporter.php`
 
 - applies locale from session/cookie for admins,
 - forces the default application locale for non-admin users.
+
+`AddSecurityHeaders`:
+
+- adds baseline browser security headers to web responses,
+- adds HSTS when the request is served over HTTPS.
 
 `AppServiceProvider` view composer:
 
@@ -604,9 +610,7 @@ Behavior:
 Sources:
 
 - `database/migrations/2026_07_03_000008_create_play_sessions_table.php`
-- `database/migrations/2026_07_03_000009_update_play_sessions_for_session_hosts.php`
-- `database/migrations/2026_07_03_000010_add_layout_settings_to_play_sessions.php`
-- `database/migrations/2026_07_07_000001_add_game_scoring_to_play_sessions.php`
+- `database/migrations/2026_07_07_000001_create_play_session_scores_table.php`
 
 ### `play_session_scores`
 
@@ -667,7 +671,8 @@ The current suite verifies, among other things:
 - course search,
 - course show rendering,
 - play session start, invite, join, and layout flows,
-- preference persistence behavior.
+- preference persistence and same-origin redirect behavior,
+- baseline web security headers.
 
 Relevant test files:
 
@@ -688,7 +693,7 @@ These are not necessarily bugs, but they are important to understand when extend
 - Google login also sets Laravel's web guard, while app behavior still uses the session-backed current-player id,
 - admin tools are guarded by user role, not a separate admin session type,
 - guests cannot personalize locale/theme,
-- play sessions can be started, joined, and ended, but there is no historical session browser yet,
+- play sessions can be started, joined, ended, and reviewed from the sessions page, but there is no deeper export/reporting workflow yet,
 - course detail pages may trigger background data refresh behavior at request time,
 - importer richness depends on what UDisc exposes in structured payloads for a given course page.
 
@@ -698,8 +703,8 @@ When changing behavior in the future, start with these files:
 
 - routing and page composition: `routes/web.php`
 - shared auth state: `app/Services/CurrentPlayerResolver.php`
-- admin gating: `app/Http/Middleware/EnsureAdminAuthenticated.php`
-- preferences and view state: `app/Http/Middleware/ApplyUserPreferences.php`, `app/Providers/AppServiceProvider.php`
+- admin gating: `app/Http/Middleware/EnsureAdminAuthenticated.php`, `app/Livewire/Admin/Concerns/EnsuresAdminAccess.php`
+- preferences, security headers, and view state: `app/Http/Middleware/ApplyUserPreferences.php`, `app/Http/Middleware/AddSecurityHeaders.php`, `app/Providers/AppServiceProvider.php`
 - session workflow: `app/Livewire/PlaySessionPage.php`, `app/Livewire/PlaySessionGamePage.php`, `app/Livewire/PlayerConsole.php`, `app/Services/PlaySessionStarter.php`
 - course import pipeline: `app/Livewire/Admin/CourseManager.php`, `app/Services/UDiscCourseImporter.php`
 - functional regression coverage: `tests/Feature/`

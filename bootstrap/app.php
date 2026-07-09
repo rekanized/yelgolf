@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AddSecurityHeaders;
 use App\Http\Middleware\ApplyUserPreferences;
 use App\Http\Middleware\EnsureAdminAuthenticated;
 use Illuminate\Foundation\Application;
@@ -16,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
             ApplyUserPreferences::class,
+            AddSecurityHeaders::class,
         ]);
 
         $middleware->alias([

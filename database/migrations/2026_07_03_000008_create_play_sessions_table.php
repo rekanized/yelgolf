@@ -14,10 +14,14 @@ return new class extends Migration
         Schema::create('play_sessions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('course_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('host_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('host_id')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->string('host_session_key')->nullable();
+            $table->string('host_name')->nullable();
+            $table->unsignedBigInteger('host_layout_id')->nullable();
             $table->string('status')->default('active');
             $table->timestamp('started_at')->nullable();
             $table->timestamp('ended_at')->nullable();
+            $table->unsignedSmallInteger('current_hole_index')->default(1);
             $table->timestamps();
         });
 
@@ -27,6 +31,7 @@ return new class extends Migration
             $table->string('status')->default('invited');
             $table->timestamp('invited_at')->nullable();
             $table->timestamp('joined_at')->nullable();
+            $table->unsignedBigInteger('selected_layout_id')->nullable();
             $table->timestamps();
 
             $table->unique(['play_session_id', 'user_id']);

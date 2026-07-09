@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Admin\CourseManager;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
@@ -14,9 +15,15 @@ class AdminCourseImportInteractionTest extends TestCase
 
     public function test_admin_import_dispatches_notification_without_page_refresh(): void
     {
+        $admin = User::factory()->create([
+            'role' => User::ROLE_ADMIN,
+        ]);
+
         Http::fake([
             'udisc.com/*' => Http::response($this->udiscHtml(), 200),
         ]);
+
+        $this->withSession(['current_player_id' => $admin->id]);
 
         Livewire::test(CourseManager::class)
             ->set('udiscUrl', 'https://udisc.com/courses/haesthagen-M8Wu')

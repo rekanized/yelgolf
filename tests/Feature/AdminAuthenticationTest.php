@@ -2,12 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Admin\CourseManager;
+use App\Livewire\Admin\UserManager;
 use App\Models\Course;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class AdminAuthenticationTest extends TestCase
@@ -24,7 +28,7 @@ class AdminAuthenticationTest extends TestCase
         $user = User::query()->create([
             'name' => 'test',
             'email' => 'test@example.com',
-            'password' => Hash::make('test'),
+            'password' => Hash::make(Str::password(40)),
             'role' => User::ROLE_PLAYER,
         ]);
 
@@ -33,12 +37,30 @@ class AdminAuthenticationTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_admin_livewire_components_require_admin_access_directly(): void
+    {
+        $user = User::query()->create([
+            'name' => 'test',
+            'email' => 'test@example.com',
+            'password' => Hash::make(Str::password(40)),
+            'role' => User::ROLE_PLAYER,
+        ]);
+
+        Livewire::test(CourseManager::class)
+            ->assertForbidden();
+
+        $this->withSession(['current_player_id' => $user->id]);
+
+        Livewire::test(UserManager::class)
+            ->assertForbidden();
+    }
+
     public function test_authenticated_admin_dashboard_uses_admin_panel_copy_and_nav_logout(): void
     {
         $admin = User::query()->create([
             'name' => 'admin',
             'email' => 'admin@example.com',
-            'password' => Hash::make('test'),
+            'password' => Hash::make(Str::password(40)),
             'role' => User::ROLE_ADMIN,
         ]);
 
@@ -70,7 +92,7 @@ class AdminAuthenticationTest extends TestCase
         $user = User::query()->create([
             'name' => 'test',
             'email' => 'test@example.com',
-            'password' => Hash::make('test'),
+            'password' => Hash::make(Str::password(40)),
             'role' => User::ROLE_PLAYER,
         ]);
 
@@ -84,7 +106,7 @@ class AdminAuthenticationTest extends TestCase
         $admin = User::query()->create([
             'name' => 'Admin User',
             'email' => 'admin@example.com',
-            'password' => Hash::make('test'),
+            'password' => Hash::make(Str::password(40)),
             'role' => User::ROLE_ADMIN,
             'google_id' => 'google-admin',
         ]);
@@ -92,7 +114,7 @@ class AdminAuthenticationTest extends TestCase
         User::query()->create([
             'name' => 'Player One',
             'email' => 'player@example.com',
-            'password' => Hash::make('test'),
+            'password' => Hash::make(Str::password(40)),
             'role' => User::ROLE_PLAYER,
             'google_id' => 'google-player',
         ]);
@@ -115,7 +137,7 @@ class AdminAuthenticationTest extends TestCase
         $admin = User::query()->create([
             'name' => 'admin',
             'email' => 'admin@example.com',
-            'password' => Hash::make('test'),
+            'password' => Hash::make(Str::password(40)),
             'role' => User::ROLE_ADMIN,
         ]);
 
@@ -168,6 +190,7 @@ class AdminAuthenticationTest extends TestCase
             'sub' => $id,
             'name' => $name,
             'email' => $email,
+            'email_verified' => true,
         ])->map([
             'id' => $id,
             'name' => $name,

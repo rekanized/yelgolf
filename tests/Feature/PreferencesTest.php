@@ -29,6 +29,25 @@ class PreferencesTest extends TestCase
         $response->assertCookie(config('yelgolf.theme_cookie'), 'light');
     }
 
+    public function test_preferences_redirect_rejects_same_prefix_external_hosts(): void
+    {
+        config(['app.url' => 'https://yelgolf.test']);
+
+        $admin = User::factory()->create([
+            'role' => User::ROLE_ADMIN,
+        ]);
+
+        $response = $this
+            ->withSession(['current_player_id' => $admin->id])
+            ->post(route('preferences.update'), [
+                'locale' => 'en',
+                'theme' => 'light',
+                'redirect_to' => 'https://yelgolf.test.evil.example/phish',
+            ]);
+
+        $response->assertRedirect(url('/'));
+    }
+
     public function test_guests_use_default_english_and_light_theme_even_when_preference_state_exists(): void
     {
         $response = $this
@@ -84,5 +103,23 @@ class PreferencesTest extends TestCase
         $response->assertOk();
         $response->assertSee('href="'.route('admin.dashboard').'"', false);
         $response->assertSee('>Admin<', false);
+    }
+
+    public function test_logout_invalidates_player_session_state(): void
+    {
+        $admin = User::factory()->create([
+            'role' => User::ROLE_ADMIN,
+        ]);
+
+        $response = $this
+            ->withSession([
+                'current_player_id' => $admin->id,
+                'locale' => 'sv',
+            ])
+            ->post(route('logout'));
+
+        $response->assertRedirect(route('home'));
+        $response->assertSessionMissing('current_player_id');
+        $response->assertSessionMissing('locale');
     }
 }

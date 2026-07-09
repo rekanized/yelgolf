@@ -60,6 +60,41 @@ class UserAuthenticationTest extends TestCase
         ]);
     }
 
+    public function test_google_login_requires_a_verified_google_email(): void
+    {
+        $this->mockGoogleUser('google-123', 'Test Player', 'test@example.com', emailVerified: false);
+
+        $this->get(route('auth.google.callback'))
+            ->assertRedirect(route('login'));
+
+        $this->assertNull(session('current_player_id'));
+        $this->assertDatabaseMissing('users', [
+            'email' => 'test@example.com',
+        ]);
+    }
+
+    public function test_google_login_reuses_existing_google_account_when_email_changes(): void
+    {
+        $user = User::query()->create([
+            'name' => 'Existing Player',
+            'email' => 'old@example.com',
+            'password' => 'existing-password',
+            'google_id' => 'google-123',
+        ]);
+
+        $this->mockGoogleUser('google-123', 'Test Player', 'new@example.com');
+
+        $this->get(route('auth.google.callback'))
+            ->assertRedirect(url('/').'#course-list');
+
+        $this->assertSame($user->id, session('current_player_id'));
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'email' => 'new@example.com',
+            'google_id' => 'google-123',
+        ]);
+    }
+
     public function test_logged_in_player_starts_session_as_real_participant(): void
     {
         $user = User::query()->create([
@@ -92,12 +127,13 @@ class UserAuthenticationTest extends TestCase
         ]);
     }
 
-    private function mockGoogleUser(string $id, string $name, string $email): void
+    private function mockGoogleUser(string $id, string $name, string $email, bool $emailVerified = true): void
     {
         $socialiteUser = (new SocialiteUser)->setRaw([
             'sub' => $id,
             'name' => $name,
             'email' => $email,
+            'email_verified' => $emailVerified,
             'picture' => 'https://example.com/avatar.jpg',
         ])->map([
             'id' => $id,

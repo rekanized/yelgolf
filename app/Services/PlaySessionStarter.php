@@ -15,14 +15,20 @@ class PlaySessionStarter
             [
                 'course_id' => $course->id,
                 'host_id' => $currentPlayer->id,
-                'host_session_key' => $request->session()->getId(),
                 'status' => 'active',
             ],
             [
+                'host_session_key' => $request->session()->getId(),
                 'host_name' => $currentPlayer->name,
                 'started_at' => now(),
             ],
         );
+
+        if ($session->wasRecentlyCreated === false && $session->host_session_key !== $request->session()->getId()) {
+            $session->forceFill([
+                'host_session_key' => $request->session()->getId(),
+            ])->save();
+        }
 
         $session->players()->syncWithoutDetaching([
             $currentPlayer->id => [

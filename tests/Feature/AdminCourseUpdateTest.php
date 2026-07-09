@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Livewire\Admin\CourseManager;
 use App\Models\Course;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
@@ -15,6 +16,10 @@ class AdminCourseUpdateTest extends TestCase
 
     public function test_admin_can_update_existing_course_from_stored_udisc_url(): void
     {
+        $admin = User::factory()->create([
+            'role' => User::ROLE_ADMIN,
+        ]);
+
         $course = Course::query()->create([
             'name' => 'Hästhagen',
             'slug' => 'haesthagen-M8Wu',
@@ -27,6 +32,8 @@ class AdminCourseUpdateTest extends TestCase
         Http::fake([
             'udisc.com/*' => Http::response($this->updatedUdiscHtml(), 200),
         ]);
+
+        $this->withSession(['current_player_id' => $admin->id]);
 
         Livewire::test(CourseManager::class)
             ->call('updateCourse', $course->id)

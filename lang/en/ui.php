@@ -117,6 +117,7 @@ return [
         'copy' => 'Sign in with Google to access the parts of Yelgolf your role allows.',
         'google_submit' => 'Continue with Google',
         'missing_google_email' => 'Google did not provide an email address for this account.',
+        'invalid_google_account' => 'Google could not verify this account. Try again with a verified Google account.',
     ],
     'game' => [
         'open_button' => 'Game',

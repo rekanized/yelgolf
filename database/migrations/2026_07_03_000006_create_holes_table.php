@@ -14,6 +14,7 @@ return new class extends Migration
             $table->string('udisc_hole_id')->nullable();
             $table->unsignedInteger('layout_id')->nullable();
             $table->string('layout_name')->nullable();
+            $table->string('layout_caddie_book_url')->nullable();
             $table->string('layout_difficulty')->nullable();
             $table->unsignedSmallInteger('layout_order')->default(1);
             $table->unsignedSmallInteger('sort_order')->default(1);

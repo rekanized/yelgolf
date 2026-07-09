@@ -117,6 +117,7 @@ return [
         'copy' => 'Logga in med Google för att få tillgång till de delar av Yelgolf som din roll tillåter.',
         'google_submit' => 'Fortsätt med Google',
         'missing_google_email' => 'Google gav ingen e-postadress för det här kontot.',
+        'invalid_google_account' => 'Google kunde inte verifiera det här kontot. Försök igen med ett verifierat Google-konto.',
     ],
     'game' => [
         'open_button' => 'Spel',

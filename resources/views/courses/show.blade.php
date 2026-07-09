@@ -112,7 +112,7 @@
 
                         <div class="hero-actions">
                             @if ($course->latitude && $course->longitude)
-                                <a class="button button-primary" href="https://www.google.com/maps/place/{{ $course->latitude }},{{ $course->longitude }}" target="_blank" rel="noreferrer">{{ __('ui.course.open_map') }}</a>
+                                <a class="button button-primary" href="https://www.google.com/maps/place/{{ $course->latitude }},{{ $course->longitude }}" target="_blank" rel="noopener noreferrer">{{ __('ui.course.open_map') }}</a>
                             @endif
 
                             <form class="button-form" method="POST" action="{{ route('sessions.store', $course) }}">
@@ -227,7 +227,7 @@
 
                                             @if ($layout->layout_caddie_book_url)
                                                 <div class="course-layout-card__actions">
-                                                    <a class="button button-secondary" href="{{ $layout->layout_caddie_book_url }}" target="_blank" rel="noreferrer">{{ __('ui.course.layout_map') }}</a>
+                                                    <a class="button button-secondary" href="{{ $layout->layout_caddie_book_url }}" target="_blank" rel="noopener noreferrer">{{ __('ui.course.layout_map') }}</a>
                                                 </div>
                                             @endif
                                         </div>
@@ -280,7 +280,7 @@
 
                         <div class="course-gallery">
                             @foreach ($course->photos as $photo)
-                                <a class="course-gallery__item" href="{{ $photo }}" target="_blank" rel="noreferrer">
+                                <a class="course-gallery__item" href="{{ $photo }}" target="_blank" rel="noopener noreferrer">
                                     <img src="{{ $photo }}" alt="{{ __('ui.course.photo_alt', ['name' => $course->name]) }}" loading="lazy">
                                 </a>
                             @endforeach
