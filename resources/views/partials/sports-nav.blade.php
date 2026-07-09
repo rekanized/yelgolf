@@ -3,7 +3,7 @@
     $sessionsIsActive = request()->routeIs('sessions.*');
     $isAdmin = $isAdminAuthenticated ?? false;
     $accountIsActive = $isAdmin
-        ? request()->routeIs('admin.dashboard')
+        ? request()->routeIs('admin.*')
         : request()->routeIs('login');
     $settingsIsActive = request()->routeIs('settings.edit');
     $navLinkClass = static fn (bool $isActive): string => 'sports-nav__link'.($isActive ? ' sports-nav__link--active' : '');

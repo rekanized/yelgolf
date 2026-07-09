@@ -1001,6 +1001,10 @@ p {
     margin-top: 20px;
 }
 
+.hero-actions .button-form {
+    width: 100%;
+}
+
 .hero-actions .button {
     width: 100%;
 }
@@ -1070,6 +1074,7 @@ p {
 .sports-grid__main,
 .sports-grid__side,
 .course-list,
+.user-list,
 .panel-grid,
 .import-form {
     display: grid;
@@ -1120,13 +1125,28 @@ p {
 .dashboard-header > div,
 .topbar > div,
 .course-list-item,
+.user-list-item,
 .course-list-item > *,
+.user-list-item > *,
 .panel,
 .admin-shell,
 .actions,
+.admin-nav,
 .course-list,
+.user-list,
 .sports-panel {
     min-width: 0;
+}
+
+.admin-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.admin-nav .button {
+    min-width: 132px;
 }
 
 .panel-note {
@@ -1499,13 +1519,47 @@ p {
 }
 
 .fixture-card,
-.course-list-item {
+.course-list-item,
+.user-list-item {
     display: grid;
     gap: 14px;
     padding: 16px;
     border: 1px solid var(--card-border);
     border-radius: 18px;
     background: var(--card-background);
+}
+
+.user-list-item__identity {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.user-list-item__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.user-avatar {
+    width: 48px;
+    height: 48px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--card-border);
+    background: var(--card-background-stronger);
+}
+
+.user-avatar--fallback {
+    display: grid;
+    place-items: center;
+    color: var(--ink-strong);
+    font-family: "Barlow Condensed", Impact, sans-serif;
+    font-size: 1.4rem;
+    font-weight: 700;
 }
 
 .fixture-card--lead {
@@ -1529,6 +1583,9 @@ p {
 .course-list-item h3,
 .course-list-item p,
 .course-list-item .muted,
+.user-list-item h3,
+.user-list-item p,
+.user-list-item .muted,
 .dashboard-header h2,
 .dashboard-header h3,
 .topbar h1,
@@ -1602,8 +1659,17 @@ p {
     padding: 56px 22px;
     text-align: center;
     border: 1px solid var(--line);
-    border-top: 0;
     background: var(--panel-background);
+}
+
+.sports-panel > .sports-empty {
+    border: 0;
+    background: transparent;
+}
+
+.sports-empty .actions {
+    justify-content: center;
+    margin-top: 18px;
 }
 
 .sports-empty p {
@@ -1913,6 +1979,10 @@ p {
         right: -10px;
         bottom: -14px;
         opacity: 0.42;
+    }
+
+    .hero-actions .button-form {
+        width: auto;
     }
 
     .hero-actions .button {

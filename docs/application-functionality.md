@@ -31,9 +31,9 @@ Role checks are handled through the current signed-in user stored in session sta
 ### Shared login model
 
 - `/login` is the only login page.
-- Users can log in with either their `name` or `email`.
-- Passwords are checked against the `users` table.
-- If multiple users match the login string, admin users are preferred first.
+- Users sign in with Google OAuth.
+- Google users are matched to existing users by email before a new player user is created.
+- Emails listed in `GOOGLE_ADMIN_EMAILS` are granted the admin role on login.
 
 ### Admin-only areas
 
@@ -158,9 +158,28 @@ Source: `app/Livewire/PlaySessionGamePage.php`
 
 Purpose:
 
-- renders the shared login form.
+- renders the shared login page with a Google sign-in link.
 
 Source: `app/Livewire/UserLoginForm.php`
+
+#### `GET /auth/google`
+
+Purpose:
+
+- redirects the user to Google OAuth.
+
+Source: `app/Http/Controllers/GoogleAuthController.php`
+
+#### `GET /auth/google/callback`
+
+Purpose:
+
+- handles the Google OAuth callback,
+- finds or creates the local user,
+- stores the current player in session,
+- redirects to `/#course-list`.
+
+Source: `app/Http/Controllers/GoogleAuthController.php`
 
 #### `POST /logout`
 
@@ -228,13 +247,13 @@ Important note:
 
 Implemented behavior:
 
-- the login form accepts either username or email,
-- incorrect credentials keep the user on the form and show a translated validation error,
+- the login page sends users through Google OAuth,
+- Google accounts without an email are rejected with a translated validation error,
 - successful login stores the current player in session and redirects to `/#course-list`.
 
 Important note:
 
-- there is no separate admin login form; admin status depends entirely on the matched user record.
+- there is no separate admin login form; admin status depends on the matched user record or `GOOGLE_ADMIN_EMAILS`.
 
 ### Admin course import and refresh
 
@@ -326,13 +345,22 @@ Important constraint:
 
 Responsibilities:
 
-- validate credentials,
-- resolve a user by name or email,
-- prioritize admins when duplicate login strings exist,
+- render the shared login page,
+- link to the Google OAuth redirect route.
+
+Source: `app/Livewire/UserLoginForm.php`
+
+### `GoogleAuthController`
+
+Responsibilities:
+
+- redirect to Google,
+- handle the OAuth callback,
+- resolve or create the signed-in user by email,
 - set the current player in session,
 - redirect to the course list.
 
-Source: `app/Livewire/UserLoginForm.php`
+Source: `app/Http/Controllers/GoogleAuthController.php`
 
 ### `PlaySessionPage`
 
@@ -468,6 +496,8 @@ Relevant fields:
 - `name`
 - `email`
 - `password`
+- `google_id`
+- `google_avatar`
 - `role`
 
 Behavior:
@@ -655,7 +685,7 @@ Relevant test files:
 
 These are not necessarily bugs, but they are important to understand when extending the app:
 
-- there is no dedicated Laravel auth guard or password reset flow; authentication is a lightweight session-backed current-player pattern,
+- Google login also sets Laravel's web guard, while app behavior still uses the session-backed current-player id,
 - admin tools are guarded by user role, not a separate admin session type,
 - guests cannot personalize locale/theme,
 - play sessions can be started, joined, and ended, but there is no historical session browser yet,

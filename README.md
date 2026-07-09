@@ -11,7 +11,7 @@ Yelgolf is a small Laravel and Livewire golf directory with a no-build frontend 
 ## Current scope
 
 - Public welcome page that lists imported courses.
-- Shared user login with role-based access to admin tools.
+- Google login with role-based access to admin tools.
 - Admin importer that accepts a public UDisc course URL and stores scraped course details in SQLite.
 
 ## Reference docs
@@ -20,14 +20,14 @@ Yelgolf is a small Laravel and Livewire golf directory with a no-build frontend 
 
 ## Admin access
 
-The shared login page at `/login` is used for every user. Admin access is decided by the user's role after login.
+The shared login page at `/login` is used for every user and redirects through Google. Admin access is decided by the user's role after login.
 
-The bootstrap admin account uses these default credentials:
+Configure Google OAuth in `.env`:
 
-- Username: `admin`
-- Password: `test`
-
-The password can be changed with `ADMIN_PASSWORD` in the environment before running migrations.
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_REDIRECT_URI`
+- `GOOGLE_ADMIN_EMAILS` as a comma-separated list of Google account emails that should receive admin access.
 
 ## Local setup
 
@@ -46,5 +46,4 @@ Then open `http://localhost:8000`.
 
 - The importer currently targets public UDisc course pages like `https://udisc.com/courses/haesthagen-M8Wu`.
 - Parsed fields include course name, location, description, hole count, rating summary, coordinates, and established year when available.
-- Google authentication can be added later without changing the public course directory structure.
 - The live test URL is `https://yelgolf.rekanized.com` and should be used for real browser verification.

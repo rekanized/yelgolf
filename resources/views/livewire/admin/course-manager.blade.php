@@ -23,6 +23,8 @@
                 <p class="panel-note">{{ __('ui.admin.same_data_copy') }}</p>
             </div>
 
+            @include('partials.admin-nav')
+
             <div class="panel-grid">
                 <article class="panel">
                     <div class="dashboard-header">

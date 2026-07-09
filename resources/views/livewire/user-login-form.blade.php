@@ -20,33 +20,15 @@
                     <p class="eyebrow">{{ __('ui.player_auth.eyebrow') }}</p>
                     <h1>{{ __('ui.player_auth.title') }}</h1>
                 </div>
-                <p class="panel-note">{!! __('ui.player_auth.copy', ['login' => '<strong>test</strong>', 'password' => '<strong>test</strong>']) !!}</p>
+                <p class="panel-note">{{ __('ui.player_auth.copy') }}</p>
             </div>
 
-            <form wire:submit="authenticate">
-                <div class="field">
-                    <label for="player-login">{{ __('ui.player_auth.login') }}</label>
-                    <input id="player-login" type="text" wire:model="login" autocomplete="username">
-                    @error('login') <p class="error-text">{{ $message }}</p> @enderror
-                </div>
+            @error('google') <p class="error-text">{{ $message }}</p> @enderror
 
-                <div class="field">
-                    <label for="player-password">{{ __('ui.player_auth.password') }}</label>
-                    <input id="player-password" type="password" wire:model="password" autocomplete="current-password">
-                    @error('password') <p class="error-text">{{ $message }}</p> @enderror
-                </div>
-
-                <div class="actions" style="margin-top: 22px;">
-                    <button class="button button-primary button-with-spinner" type="submit" wire:loading.attr="disabled" wire:target="authenticate">
-                        <span wire:loading.remove wire:target="authenticate">{{ __('ui.player_auth.submit') }}</span>
-                        <span class="button-spinner-wrap" wire:loading wire:target="authenticate">
-                            <span class="button-spinner" aria-hidden="true"></span>
-                            {{ __('ui.player_auth.signing_in') }}
-                        </span>
-                    </button>
-                    <a class="button button-secondary" href="{{ url('/') }}">{{ __('ui.nav.back_to_courses') }}</a>
-                </div>
-            </form>
+            <div class="actions" style="margin-top: 22px;">
+                <a class="button button-primary" href="{{ route('auth.google.redirect') }}">{{ __('ui.player_auth.google_submit') }}</a>
+                <a class="button button-secondary" href="{{ url('/') }}">{{ __('ui.nav.back_to_courses') }}</a>
+            </div>
         </section>
     </main>
 </div>

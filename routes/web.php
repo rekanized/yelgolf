@@ -1,9 +1,11 @@
 <?php
 
-use App\Livewire\UserLoginForm;
+use App\Http\Controllers\GoogleAuthController;
 use App\Livewire\Admin\CourseManager;
+use App\Livewire\Admin\UserManager;
 use App\Livewire\PlaySessionGamePage;
 use App\Livewire\PlaySessionPage;
+use App\Livewire\UserLoginForm;
 use App\Models\Course;
 use App\Models\PlaySession;
 use App\Services\CurrentPlayerResolver;
@@ -65,7 +67,7 @@ Route::get('/courses/{course:slug}', function (Course $course, UDiscCourseImport
     ) {
         try {
             $course = $importer->import($course->udisc_url)->fresh();
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             report($exception);
         }
     }
@@ -121,8 +123,11 @@ Route::get('/sessions/{playSession}/game', PlaySessionGamePage::class)->name('se
 Route::get('/sessions/{playSession}', PlaySessionPage::class)->name('sessions.show');
 
 Route::get('/login', UserLoginForm::class)->name('login');
+Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])->name('auth.google.redirect');
+Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');
 
 Route::post('/logout', function () {
+    auth()->logout();
     request()->session()->forget('current_player_id');
     request()->session()->forget('admin_authenticated');
     request()->session()->regenerate();
@@ -134,4 +139,8 @@ Route::prefix('admin')->group(function (): void {
     Route::get('/', CourseManager::class)
         ->middleware('admin.auth')
         ->name('admin.dashboard');
+
+    Route::get('/users', UserManager::class)
+        ->middleware('admin.auth')
+        ->name('admin.users');
 });
