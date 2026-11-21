@@ -32,7 +32,7 @@ Configure Google OAuth in `.env`:
 ## Local setup
 
 ```bash
-composer install
+composer refresh-dependencies
 cp .env.example .env
 touch database/database.sqlite
 php artisan key:generate
@@ -47,3 +47,13 @@ Then open `http://localhost:8000`.
 - The importer currently targets public UDisc course pages like `https://udisc.com/courses/haesthagen-M8Wu`.
 - Parsed fields include course name, location, description, hole count, rating summary, coordinates, and established year when available.
 - The live test URL is `https://yelgolf.rekanized.com` and should be used for real browser verification.
+
+## PHP and dependency updates
+
+PHP 8.5 or newer is required. Use `composer refresh-dependencies` for development
+and `composer build` for deployment without development packages. Both fetch
+the latest stable versions allowed by `composer.json`, update `composer.lock`,
+and fail if the security audit or real platform checks fail. Test the result
+before publishing and retain the resolved lock file with the release.
+`composer install` only reproduces an existing lock file; it does not fetch updates.
+Major upgrades outside the declared constraints require a separate compatibility update.
